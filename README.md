@@ -3,8 +3,9 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 
 ## Features:
 - Retrieve links from all sitemaps, starting with the main sitemap
-- Scrape retrieved links for uris found in tags: <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
-- Output each uri group to files:
+- Scrape retrieved links for URI found in tags: <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
+- URIs are domain-specific (i.e. same domain as the sitemaps).
+- Output each URI group to files:
   - sitemaps
   - links from all sitemaps
   - <code>&lt;a href&gt;</code>
@@ -12,13 +13,14 @@ This Powershell script has the ability to retrieve and output all of a site's UR
   - <code>&lt;img srcset&gt;</code>
   - <code>&lt;link rel&gt;</code>
   - <code>&lt;script src&gt;</code>
-- Output curls for each uri group to files:
+- Output curls for each URI group to files:
   - <code>&lt;a href&gt;</code>
   - <code>&lt;img src&gt;</code>
   - <code>&lt;img srcset&gt;</code>
   - <code>&lt;link rel&gt;</code>
   - <code>&lt;script src&gt;</code>
 - Choice whether to warm site with the above uris as part of script.
+
 
 ## Requirements:
 - Powershell v3
@@ -38,5 +40,5 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 - Sysadmins may also need a list of all uris, in order to warm their site (i.e. "preload the cache") especially so if they use Content Delivery Networks (CDNs).
 - Search Engine Optimization (SEO) often involves preloading of the website's cache, so that it is served faster to visitors. This script does this automatically; alternatively site warming can be achieved through using the curls generated in a separate file for portability.
 - Warming sites may be easier using curls rather than Powershell's Invoke-WebRequest which relies on Internet Explorer and its security settings. This script generates curls in a separate file.
-- Website owners might need a list of urls if they intend to migrate their site (e.g. changing a domain name, migrating to another site etc.).
+- Website owners might need a list of their site's urls if they intend to migrate their site (e.g. changing a domain name).
 

@@ -31,7 +31,7 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 - Alternatively, open command prompt in the script directory, and run <code>Powershell .\site-scraper-warmer.ps1</code>
 
 ## NOTE:
-- By default, script directory (where you run the script) needs <b>write permission</b>. All created files/folders will reside in the script directory
+- By default, script directory (where you run the script) needs <b>write permission</b>. All created files/folders will reside in the script directory.
 
 ## Background: 
 - Sysadmins may need a list of their sitemaps, or links from those sitemaps. This scripts generates them in seconds.

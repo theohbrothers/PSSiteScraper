@@ -59,36 +59,36 @@ $debug = 0
 ############### functions ###############
 # checks if uri belongs to our domain
 function isofdomain($str) {
-    # generate domain regex
-    $regex_str = '(?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/'
-    [bool]$cond1 = $str -match $regex_str
-    [bool]$cond2 = $str -match '#' # don't include
-    if ( $cond1 -and !$cond2 ){
-        return $true
-    }else {
-        return $false
-    }
+	# generate domain regex
+	$regex_str = '(?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/'
+	[bool]$cond1 = $str -match $regex_str
+	[bool]$cond2 = $str -match '#' # don't include
+	if ( $cond1 -and !$cond2 ){
+		return $true
+	}else {
+		return $false
+	}
 }
 
 # replace protocol with our desired
 function replace_protocol($array) {
-    #Write-Host $array.Count
-    for($i=0; $i -lt $array.count; $i++) {
-        $uri = $array[$i]
-        $captures = [regex]::Match( $uri, '^((?:https?:)?\/\/)' ) # capture protocol part including the //
-        $prot = $captures.Groups[0].Value
-        $array[$i] = $uri -replace $prot, $desired_protocol
+	#Write-Host $array.Count
+	for($i=0; $i -lt $array.count; $i++) {
+		$uri = $array[$i]
+		$captures = [regex]::Match( $uri, '^((?:https?:)?\/\/)' ) # capture protocol part including the //
+		$prot = $captures.Groups[0].Value
+		$array[$i] = $uri -replace $prot, $desired_protocol
 
-    }
-    <# using foreach from: http://stackoverflow.com/questions/34166023/powershell-modify-elements-of-array
-    $array = $array | foreach {
-        $captures = [regex]::Match( $_, '((?:https?:)?\/\/)' )
-        $prot = $captures.Groups[0].Value
-        $new_uri = $_ -replace $prot, 'http://'
-        $_ = $new_uri
-        $_
+	}
+	<# using foreach from: http://stackoverflow.com/questions/34166023/powershell-modify-elements-of-array
+	$array = $array | foreach {
+		$captures = [regex]::Match( $_, '((?:https?:)?\/\/)' )
+		$prot = $captures.Groups[0].Value
+		$new_uri = $_ -replace $prot, 'http://'
+		$_ = $new_uri
+		$_
 
-    }#>
+	}#>
 }
 #########################################
 # Get script directory, set as cd
@@ -124,11 +124,11 @@ $sitemaps = $contentInXML.sitemapindex.sitemap.loc
 # get links in sitemaps
 $links = @()
 foreach ($s in $sitemaps) {
-    Write-Host "> Retreiving $s"
-    [xml]$contentInXML =  ((Invoke-WebRequest -Uri $s).Content)
-    if($debug) { Format-XML -InputObject $contentInXML }
-    $links += $contentInXML.urlset.url.loc
-    $i++
+	Write-Host "> Retreiving $s"
+	[xml]$contentInXML =  ((Invoke-WebRequest -Uri $s).Content)
+	if($debug) { Format-XML -InputObject $contentInXML }
+	$links += $contentInXML.urlset.url.loc
+	$i++
 }
 
 # print sitemaps and links
@@ -163,74 +163,74 @@ if (!(Test-Path $html_dir)) {New-Item -ItemType directory $html_dir} # create ht
 
 # scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
 foreach ($l in $links_to_scrape) {
-    $i++
-    # Scrape, while warming the link
-    $html = Invoke-WebRequest -uri $l
+	$i++
+	# Scrape, while warming the link
+	$html = Invoke-WebRequest -uri $l
 
-    # output html to file
-    $html.Content | Out-File "$html_dir\$i.html" -Encoding utf8
+	# output html to file
+	$html.Content | Out-File "$html_dir\$i.html" -Encoding utf8
 
-    # parse html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
-    $html.links | foreach {
-        $val = $_.href
-        if(isofdomain($val)) {
-            if (!$a_href_all.Contains($val)) {
-                $a_href_all += $val
-            }
-        }
-    }
-    $html.Images | foreach {
-        $val = $_.src
-        if(isofdomain($val)) {
-            if (!$img_src_all.Contains($val)) {
-                $img_src_all += $val
-            }
-        }
-    }
-    $html.Images | foreach {
-        # if no srcset, continue with next
-        if(!$_.srcset) { <#Write-Host 'no srcset';#> return } # continue is return for powershell 
-        
-        # break up srcsets
-        $val = $_.srcset
-        $vals = $val.Split(',')
-        $vals | foreach {
-            $captures = [regex]::Match( $_, '((?:https?:)?\/\/theohbrothers\.com\/[^\s]+)' )
-            $src = $captures.Groups[0].Value
-            if(isofdomain($src)) {
-                if (!$img_srcset_all.Contains($src)) {
-                    $img_srcset_all += $src
-                }
-            }
-        }
-    }
-    $html.ParsedHtml.getElementsByTagName('link') | foreach {
-        $val = $_.getAttributeNode('href').value
-        if(isofdomain($val)) {
-            if (!$link_rel_all.Contains($val)) {
-                $link_rel_all += $val
-            }
-        }
-       
-    }
-    $html.ParsedHtml.getElementsByTagName('script') | foreach {
-        $val = $_.getAttributeNode('src').value
-        if(isofdomain($val)) {
-            if (!$script_src_all.Contains($val)) {
-                $script_src_all += $val
-            }
-        }
-       
-    }
+	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
+	$html.links | foreach {
+		$val = $_.href
+		if(isofdomain($val)) {
+			if (!$a_href_all.Contains($val)) {
+				$a_href_all += $val
+			}
+		}
+	}
+	$html.Images | foreach {
+		$val = $_.src
+		if(isofdomain($val)) {
+			if (!$img_src_all.Contains($val)) {
+				$img_src_all += $val
+			}
+		}
+	}
+	$html.Images | foreach {
+		# if no srcset, continue with next
+		if(!$_.srcset) { <#Write-Host 'no srcset';#> return } # continue is return for powershell 
+		
+		# break up srcsets
+		$val = $_.srcset
+		$vals = $val.Split(',')
+		$vals | foreach {
+			$captures = [regex]::Match( $_, '((?:https?:)?\/\/theohbrothers\.com\/[^\s]+)' )
+			$src = $captures.Groups[0].Value
+			if(isofdomain($src)) {
+				if (!$img_srcset_all.Contains($src)) {
+					$img_srcset_all += $src
+				}
+			}
+		}
+	}
+	$html.ParsedHtml.getElementsByTagName('link') | foreach {
+		$val = $_.getAttributeNode('href').value
+		if(isofdomain($val)) {
+			if (!$link_rel_all.Contains($val)) {
+				$link_rel_all += $val
+			}
+		}
+	   
+	}
+	$html.ParsedHtml.getElementsByTagName('script') | foreach {
+		$val = $_.getAttributeNode('src').value
+		if(isofdomain($val)) {
+			if (!$script_src_all.Contains($val)) {
+				$script_src_all += $val
+			}
+		}
+	   
+	}
  
 }
 Write-Host "> Successfully retrieved all uri sets." -ForegroundColor Green
 # map uri sets to files
 $hashtable1=[ordered]@{  $a_href_all = $a_href_file;
-                        $img_src_all = $img_src_file;
-                        $img_srcset_all = $img_srcset_file;
-                        $link_rel_all = $link_rel_file; 
-                        $script_src_all = $script_src_file ;}
+						$img_src_all = $img_src_file;
+						$img_srcset_all = $img_srcset_file;
+						$link_rel_all = $link_rel_file; 
+						$script_src_all = $script_src_file ;}
 # replace protocol with our desired for all uris
 $hashtable1.GetEnumerator() | % { 
    replace_protocol ($_.key)
@@ -261,18 +261,18 @@ if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $curls_dir}
 
 # output curls to file
 $hashtable2=[ordered]@{ $a_href_all = $curls_a_href_file;
-                        $img_src_all = $curls_img_src_file;
-                        $img_srcset_all = $curls_img_srcset_file;
-                        $link_rel_all = $curls_link_rel_file; 
-                        $script_src_all = $curls_script_src_file ;}
+						$img_src_all = $curls_img_src_file;
+						$img_srcset_all = $curls_img_srcset_file;
+						$link_rel_all = $curls_link_rel_file; 
+						$script_src_all = $curls_script_src_file ;}
 $hashtable2.GetEnumerator() | % {
-    $curls = @(":: $(Get-Date) `n:: -k to ignore ssl cert")
-    $uri_set = $_.key
-    $uri_set_curls_file = $_.value
-    foreach ($l in $uri_set) {
-        $curls += 'curl -k -X GET ' + $l
-    }
-    $curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
+	$curls = @(":: $(Get-Date) `n:: -k to ignore ssl cert")
+	$uri_set = $_.key
+	$uri_set_curls_file = $_.value
+	foreach ($l in $uri_set) {
+		$curls += 'curl -k -X GET ' + $l
+	}
+	$curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
    Write-Host "> $($uri_set.count) curls in $curls_dir\$uri_set_curls_file" -ForegroundColor Green
 }
 
@@ -283,27 +283,26 @@ Write-Host "`n> Successfully wrote curls commands for all uri sets." -Foreground
 # 1 - warm all in a_href uri set (excluding previously scraped)
 # 2 - warm all uri sets
 if($mode_warm -eq 1) {
-    # tell user we are going to warm only a_href uri set
-    Write-Host "`n`n[Warming only a_href uri set ...] " -ForegroundColor Cyan
+	# tell user we are going to warm only a_href uri set
+	Write-Host "`n`n[Warming only a_href uri set ...] " -ForegroundColor Cyan
 
-    # warm all a_hrefs that hasn't been scraped earlier
-    Compare-Object $a_href_all $links_to_scrape | where {$_.sideindicator -eq "<="} | foreach {
-        $tmp = Invoke-WebRequest -uri $_.InputObject
-    }
-    Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
+	# warm all a_hrefs that hasn't been scraped earlier
+	Compare-Object $a_href_all $links_to_scrape | where {$_.sideindicator -eq "<="} | foreach {
+		$tmp = Invoke-WebRequest -uri $_.InputObject
+	}
+	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
 }elseif($mode_warm -eq 2) {
-    # tell user we are going to warm all uri sets
-    Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
+	# tell user we are going to warm all uri sets
+	Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
 
-    $hashtable1.GetEnumerator() | % { 
-        $uri_set = $_.key
-        $uri_set_file = $_.value
-        Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
-        $uri_set | foreach {
-            $tmp = Invoke-WebRequest -uri $_
-        }
-    }
-    Write-Host "`n> Successfully warmed all uris sets" -ForegroundColor Green
+	$hashtable1.GetEnumerator() | % { 
+		$uri_set = $_.key
+		$uri_set_file = $_.value
+		Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
+		$uri_set | foreach {
+			$tmp = Invoke-WebRequest -uri $_
+		}
+	}
+	Write-Host "`n> Successfully warmed all uris sets" -ForegroundColor Green
 }else {}
-
-
+pause

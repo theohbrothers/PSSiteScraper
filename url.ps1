@@ -46,7 +46,7 @@ $mode_sitemap_links_only = 0
 # 0 - do not warm site
 # 1 - warm a_href uris only
 # 2 - warm all uris (a_href, img_src, img_srcset, link_rel, script_src)
-# Default: 2
+# Default: 0
 $mode_warm = 0
 
 # debug mode
@@ -90,6 +90,7 @@ function replace_protocol($array) {
 
 	}#>
 }
+
 #########################################
 # Get script directory, set as cd
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
@@ -113,9 +114,9 @@ Catch { Write-Warning "Script directory has to be writeable to output links to f
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # get main sitemap as xml object
 $http_response = ''
-$http_response = Invoke-WebRequest -Uri $sitemap
+$http_response = Invoke-WebRequest -Uri $sitemap -UseBasicParsing
 if($http_response.StatusCode -ne '200') { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
-[xml]$contentInXML = $http_response.Content
+[xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) #  
 if($debug) { Format-XML -InputObject $contentInXML }
 
 # parse main sitemap to get sitemaps as xml objects
@@ -125,7 +126,7 @@ $sitemaps = $contentInXML.sitemapindex.sitemap.loc
 $links = @()
 foreach ($s in $sitemaps) {
 	Write-Host "> Retreiving $s"
-	[xml]$contentInXML =  ((Invoke-WebRequest -Uri $s).Content)
+	[xml]$contentInXML = ((Invoke-WebRequest -Uri $s -UseBasicParsing).Content)  # (New-Object System.Net.WebClient).DownloadString($s) # 
 	if($debug) { Format-XML -InputObject $contentInXML }
 	$links += $contentInXML.urlset.url.loc
 	$i++
@@ -165,8 +166,8 @@ if (!(Test-Path $html_dir)) {New-Item -ItemType directory $html_dir} # create ht
 foreach ($l in $links_to_scrape) {
 	$i++
 	# Scrape, while warming the link
-	$html = Invoke-WebRequest -uri $l
-
+	$html = Invoke-WebRequest -uri $l #-UseBasicParsing
+    
 	# output html to file
 	$html.Content | Out-File "$html_dir\$i.html" -Encoding utf8
 
@@ -195,7 +196,7 @@ foreach ($l in $links_to_scrape) {
 		$val = $_.srcset
 		$vals = $val.Split(',')
 		$vals | foreach {
-			$captures = [regex]::Match( $_, '((?:https?:)?\/\/theohbrothers\.com\/[^\s]+)' )
+			$captures = [regex]::Match( $_, '((?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/[^\s]+)' )
 			$src = $captures.Groups[0].Value
 			if(isofdomain($src)) {
 				if (!$img_srcset_all.Contains($src)) {
@@ -211,7 +212,7 @@ foreach ($l in $links_to_scrape) {
 				$link_rel_all += $val
 			}
 		}
-	   
+	  
 	}
 	$html.ParsedHtml.getElementsByTagName('script') | foreach {
 		$val = $_.getAttributeNode('src').value
@@ -222,7 +223,7 @@ foreach ($l in $links_to_scrape) {
 		}
 	   
 	}
- 
+
 }
 Write-Host "> Successfully retrieved all uri sets." -ForegroundColor Green
 # map uri sets to files
@@ -288,7 +289,7 @@ if($mode_warm -eq 1) {
 
 	# warm all a_hrefs that hasn't been scraped earlier
 	Compare-Object $a_href_all $links_to_scrape | where {$_.sideindicator -eq "<="} | foreach {
-		$tmp = Invoke-WebRequest -uri $_.InputObject
+		$tmp = Invoke-RestMethod -uri $_.InputObject # Invoke-WebRequest -uri $_.InputObject
 	}
 	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
 }elseif($mode_warm -eq 2) {
@@ -300,9 +301,10 @@ if($mode_warm -eq 1) {
 		$uri_set_file = $_.value
 		Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
 		$uri_set | foreach {
-			$tmp = Invoke-WebRequest -uri $_
+			$tmp = Invoke-RestMethod -uri $_
 		}
 	}
 	Write-Host "`n> Successfully warmed all uris sets" -ForegroundColor Green
 }else {}
+
 pause

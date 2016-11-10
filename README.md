@@ -2,12 +2,11 @@
 This Powershell script has the ability to retrieve and output all of a site's URIs by scraping the sitemap of a website,  and gives an option to warm the site automatically or manually through generated curls.
 
 ## Features:
-- Retrieve links from all sitemaps, starting with the main sitemap
-- Scrape retrieved links for URI found in tags: <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
+- Retrieve links from sitemaps, starting with the main sitemap.
+- Output sitemaps and links to individual files.
+- Choice whether to scrape retrieved links for URI found in tags: <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
 - URIs are domain-specific (i.e. same domain as the sitemaps).
 - Output each URI group to files:
-  - sitemaps
-  - links from all sitemaps
   - <code>&lt;a href&gt;</code>
   - <code>&lt;img src&gt;</code>
   - <code>&lt;img srcset&gt;</code>
@@ -19,8 +18,7 @@ This Powershell script has the ability to retrieve and output all of a site's UR
   - <code>&lt;img srcset&gt;</code>
   - <code>&lt;link rel&gt;</code>
   - <code>&lt;script src&gt;</code>
-- Choice whether to warm site with the above uris as part of script.
-
+- Choice whether to warm site with the above URIs as part of script.
 
 ## Requirements:
 - Powershell v3
@@ -51,7 +49,6 @@ Q: Help! I am getting a Internet Explorer popup warning that <code>'Content with
 ## Background: 
 - Sysadmins may need a list of their sitemaps, or links from those sitemaps. This scripts generates them in seconds.
 - Sysadmins may also need a list of all uris, in order to warm their site (i.e. "preload the cache") especially so if they use Content Delivery Networks (CDNs).
-- Search Engine Optimization (SEO) often involves preloading of the website's cache, so that it is served faster to visitors. This script does this automatically; alternatively site warming can be achieved through using the curls generated in a separate file for portability.
-- Warming sites may be easier using curls rather than Powershell's Invoke-WebRequest which relies on Internet Explorer and its security settings. This script generates curls in a separate file.
+- Search Engine Optimization (SEO) often involves warming (i.e. preloading) of the website's cache, so that it is served faster to visitors. This script can be configured to do this automatically; alternatively site warming can be achieved through using the curls generated in separate files for portability.
 - Website owners might need a list of their site's urls if they intend to migrate their site (e.g. changing a domain name).
 

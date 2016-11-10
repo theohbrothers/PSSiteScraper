@@ -271,7 +271,7 @@ $hashtable2.GetEnumerator() | % {
 	$uri_set = $_.key
 	$uri_set_curls_file = $_.value
 	foreach ($l in $uri_set) {
-		$curls += 'curl -k -X GET ' + $l
+		$curls += 'curl -k -X GET ' + "`"$l`"" + ' > NUL'   ## ' > /dev/null'
 	}
 	$curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
    Write-Host "> $($uri_set.count) curls in $curls_dir\$uri_set_curls_file" -ForegroundColor Green

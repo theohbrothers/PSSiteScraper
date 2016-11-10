@@ -36,14 +36,14 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 Q: Help! I am getting an error <code>'File C:\Users\User\rmdups\rmdups.ps1 cannot be loaded because the execution of scripts is disabled on this system. Please see "get-help about_signing" for more details.'</code>
 - You need to allow the execution of unverified scripts. Open Powershell as administrator, type <code>Set-ExecutionPolicy Unrestricted -Force</code> and press ENTER. Try running the script again. You can easily restore the security setting back by using <code>Set-ExecutionPolicy Undefined -Force</code>.
 
-Q: Help! Upon running the script I am getting a warning <code>'Execution Policy change. The execution policy helps protect you from scripts that you do not trust. Changing the executino policy might expose you to the security risks described in the about_Execution_Policies help topic at http://go.microsoft.com/?LinkID=135170. Do you want to change the execution policy?</code>
+Q: Help! Upon running the script I am getting a warning <code>'Execution Policy change. The execution policy helps protect you from scripts that you do not trust. Changing the execution policy might expose you to the security risks described in the about_Execution_Policies help topic at http://go.microsoft.com/?LinkID=135170. Do you want to change the execution policy?</code>
 - You need to allow the execution of unverified scripts. Type <code>Y</code> for yes and press enter. You can easily restore the security setting back opening Powershell as administrator, and using the code <code>Set-ExecutionPolicy Undefined -Force</code>.
 
-Q: Help! I am a Internet Explorer popup windows warning that <code>'Content within this application coming from the website listed below is being blocked by Inter Explorer Enhanced Security Configuration.'</code>
+Q: Help! I am getting a Internet Explorer popup warning that <code>'Content within this application coming from the website listed below is being blocked by Internet Explorer Enhanced Security Configuration.'</code>
 - This is a known issue with IE Enhanced Security Configuration (ESC); the only way around this is to turn off IE ESC. The script uses IE's html parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
 
 ## Known issues
-- If Inter Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script; the only way around this is to turn off IE ESC. The script uses IE's html parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
+- If Internet Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script; the only way around this is to turn off IE ESC. The script uses IE's html parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
 
 ## NOTE:
 - By default, script directory (where you run the script) needs <b>write permission</b>. All created files/folders will reside in the script directory.

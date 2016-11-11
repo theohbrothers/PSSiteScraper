@@ -30,6 +30,8 @@ $img_srcset_file = "img_srcset.txt"
 $link_rel_file = "link_rel.txt"
 $script_src_file = "script_src.txt"
 $curls_dir = "curls"
+$curls_sitemaps_file = "sitemaps.bat"
+$curls_links_file = "links.bat"
 $curls_a_href_file = "a_href.bat"
 $curls_img_src_file = "img_src.bat"
 $curls_img_srcset_file = "img_srcset.bat"
@@ -58,7 +60,7 @@ $debug = 0
 
 ############### functions ###############
 # checks if uri belongs to our domain
-function isofdomain($str) {
+function isofdomain([string]$str) {
 	# generate domain regex
 	$regex_str = '(?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/'
 	[bool]$cond1 = $str -match $regex_str
@@ -71,7 +73,7 @@ function isofdomain($str) {
 }
 
 # replace protocol with our desired
-function replace_protocol($array) {
+function replace_protocol([array]$array) {
 	#Write-Host $array.Count
 	for($i=0; $i -lt $array.count; $i++) {
 		$uri = $array[$i]
@@ -90,7 +92,21 @@ function replace_protocol($array) {
 
 	}#>
 }
+function output_curls([hashtable]$hashtable, [string]$dir) { #hashtable: uri_set_array => uri_file_string
+    # create directory to store curls, if not existing
+    if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $dir}
 
+    $hashtable.GetEnumerator() | % { 
+        $curls = @(":: $(Get-Date) `n:: -k to ignore ssl cert")
+        $uri_set = $_.key
+        $uri_set_curls_file = $_.value
+        foreach ($l in $uri_set) {
+	        $curls += 'curl -k -X GET ' + "`"$l`"" + ' > NUL'   ## ' > /dev/null'
+        }
+        $curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
+        Write-Host "> $($uri_set.count) curls in $curls_dir\$uri_set_curls_file" -ForegroundColor Green
+    } 
+}
 #########################################
 # Get script directory, set as cd
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
@@ -138,11 +154,22 @@ foreach ($s in $sitemaps) { Write-Host $s }
 Write-Host "`n>Links (total: $($links.count))" -ForegroundColor Green
 foreach ($l in $links) { Write-Host $l }
 
-# output sitemap and links
+# output sitemap and links to files
 $sitemaps | Out-File $sitemaps_file -Encoding utf8
 $links | Out-File $links_file  -Encoding utf8
 Write-Host "`n> $($sitemaps.count) sitemaps in $sitemaps_file" -ForegroundColor Green
 Write-Host "> $($links.count) links in $links_file" -ForegroundColor Green
+
+# tell user we are going to write curls commands for all uri sets 
+Write-Host "`n`n[Writing curls for sitemaps and links...]" -ForegroundColor Cyan
+
+# create directory to store curls, if not existing
+if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $curls_dir}
+
+# output curls of sitemap and links to files
+$hashtable0 = @{$sitemaps = $curls_sitemaps_file
+                $links = $curls_links_file}
+output_curls $hashtable0 $curls_dir
 
 # continue further only if user wants to
 if($mode_sitemap_links_only -eq 1) { pause; exit }
@@ -243,7 +270,7 @@ Write-Host "`n`n[Writing all uri sets to their files...]" -ForegroundColor Cyan
 # create directory to store uri_sets, if not existing
 if (!(Test-Path $uri_sets_dir)) {New-Item -ItemType directory $uri_sets_dir}
 
-# output to urisets to individual files
+# output uri sets to files
 $hashtable1.GetEnumerator() | % { 
    $uri_set = $_.key
    $uri_set_file = $_.value
@@ -257,25 +284,13 @@ Write-Host "`n> Successfully output all uri sets to their files." -ForegroundCol
 # tell user we are going to write curls commands for all uri sets 
 Write-Host "`n`n[Writing curls for all uri sets to their files...]" -ForegroundColor Cyan
 
-# create directory to store curls, if not existing
-if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $curls_dir}
-
-# output curls to file
+# output curls uri sets to files
 $hashtable2=[ordered]@{ $a_href_all = $curls_a_href_file;
-						$img_src_all = $curls_img_src_file;
-						$img_srcset_all = $curls_img_srcset_file;
-						$link_rel_all = $curls_link_rel_file; 
-						$script_src_all = $curls_script_src_file ;}
-$hashtable2.GetEnumerator() | % {
-	$curls = @(":: $(Get-Date) `n:: -k to ignore ssl cert")
-	$uri_set = $_.key
-	$uri_set_curls_file = $_.value
-	foreach ($l in $uri_set) {
-		$curls += 'curl -k -X GET ' + "`"$l`"" + ' > NUL'   ## ' > /dev/null'
-	}
-	$curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
-   Write-Host "> $($uri_set.count) curls in $curls_dir\$uri_set_curls_file" -ForegroundColor Green
-}
+                        $img_src_all = $curls_img_src_file;
+                        $img_srcset_all = $curls_img_srcset_file;
+                        $link_rel_all = $curls_link_rel_file; 
+                        $script_src_all = $curls_script_src_file ;}
+output_curls $hashtable2 $curls_dir
 
 # tell user we successfully wrote curls commands for all uri sets
 Write-Host "`n> Successfully wrote curls commands for all uri sets." -ForegroundColor Green

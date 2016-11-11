@@ -89,7 +89,6 @@ function replace_protocol([array]$array) {
 		$new_uri = $_ -replace $prot, 'http://'
 		$_ = $new_uri
 		$_
-
 	}#>
 }
 function output_curls([hashtable]$hashtable, [string]$dir) { #hashtable: uri_set_array => uri_file_string
@@ -162,9 +161,6 @@ Write-Host "> $($links.count) links in $links_file" -ForegroundColor Green
 
 # tell user we are going to write curls commands for all uri sets 
 Write-Host "`n`n[Writing curls for sitemaps and links...]" -ForegroundColor Cyan
-
-# create directory to store curls, if not existing
-if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $curls_dir}
 
 # output curls of sitemap and links to files
 $hashtable0 = @{$sitemaps = $curls_sitemaps_file

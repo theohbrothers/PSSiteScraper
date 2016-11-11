@@ -3,7 +3,7 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 
 ## Features:
 - Retrieve links from sitemaps, starting with the main sitemap.
-- Output sitemaps and links to individual files.
+- Output sitemaps and links as list and curls in individual files.
 - Choice whether to scrape retrieved links for URI found in tags: <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
 - URIs are domain-specific (i.e. same domain as the sitemaps).
 - Output each URI group to files:

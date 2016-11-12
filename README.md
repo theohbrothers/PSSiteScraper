@@ -21,15 +21,18 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 - Choice whether to warm site with the above URIs as part of script.
 
 ## Requirements:
-- Powershell v3
-- Windows environment
-- User with read/write/modify permissions on script and searched directories.
+- <a href="https://github.com/PowerShell/PowerShell#get-powershell" target="_blank">Powershell v3</a>
+- Windows / *nix environment
+- User with read/write/modify permissions on script directory.
 
 ## Installation/usage:
 - Open the <code>site-scraper-warmer.ps1</code> in your favourite text editor and configure the script settings at the top of the script (instructions are included).
-- Right click on the script in explorer and select <code>Run with Powershell</code>. (should be present on Windows 7 and up)
-- Alternatively, open command prompt in the script directory, and run <code>Powershell .\site-scraper-warmer.ps1</code>
-
+- WinNT:
+  - Right click on the script in explorer and select <code>Run with Powershell</code>. (should be present on Windows 7 and up)
+  - Alternatively, open command prompt in the script directory, and run <code>Powershell .\site-scraper-warmer.ps1</code>
+- *nix:
+  - Run <code>Powershell .\site-scraper-warmer.ps1</code>
+  
 ## FAQ
 Q: Help! I am getting an error <code>'File C:\Users\User\rmdups\rmdups.ps1 cannot be loaded because the execution of scripts is disabled on this system. Please see "get-help about_signing" for more details.'</code>
 - You need to allow the execution of unverified scripts. Open Powershell as administrator, type <code>Set-ExecutionPolicy Unrestricted -Force</code> and press ENTER. Try running the script again. You can easily restore the security setting back by using <code>Set-ExecutionPolicy Undefined -Force</code>.

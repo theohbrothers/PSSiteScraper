@@ -30,13 +30,13 @@ $img_srcset_file = "img_srcset.txt"
 $link_rel_file = "link_rel.txt"
 $script_src_file = "script_src.txt"
 $curls_dir = "curls"
-$curls_sitemaps_file = "sitemaps.bat"
-$curls_links_file = "links.bat"
-$curls_a_href_file = "a_href.bat"
-$curls_img_src_file = "img_src.bat"
-$curls_img_srcset_file = "img_srcset.bat"
-$curls_link_rel_file = "link_rel.bat"
-$curls_script_src_file = "script_src.bat"
+$curls_sitemaps_file = "sitemaps"
+$curls_links_file = "links"
+$curls_a_href_file = "a_href"
+$curls_img_src_file = "img_src"
+$curls_img_srcset_file = "img_srcset"
+$curls_link_rel_file = "link_rel"
+$curls_script_src_file = "script_src"
 
 # whether the script should stop at just retreiving sitemaps links, or continue to get all uris from all those links
 # 0 - retrieve links and continue to get all their uris
@@ -50,6 +50,12 @@ $mode_sitemap_links_only = 0
 # 2 - warm all uris (a_href, img_src, img_srcset, link_rel, script_src)
 # Default: 0
 $mode_warm = 0
+
+# the OS that generated curls will run on
+# 0 - *nix - curls as shell (.sh) script
+# 1 - WinNT - curls as batch (.bat) scripts
+# Default: 0
+$OS_WinNT = 0
 
 # debug mode
 # 0 - turn off debugging.
@@ -91,19 +97,23 @@ function replace_protocol([array]$array) {
 		$_
 	}#>
 }
-function output_curls([hashtable]$hashtable, [string]$dir) { #hashtable: uri_set_array => uri_file_string
+function output_curls([hashtable]$hashtable, [string]$dir, [int]$OS) { #hashtable: uri_set_array => uri_file_string
     # create directory to store curls, if not existing
-    if (!(Test-Path $curls_dir)) {New-Item -ItemType directory $dir}
-
+    if (!(Test-Path $dir)) {New-Item -ItemType directory $dir}
+    
+    $toNull = if($OS_WinNT -eq 1) { " > NUL" } else { " > /dev/null " }
+    $ext = if($OS_WinNT -eq 1) { ".bat" } else { ".sh" }
+    $comment_char = if($OS_WinNT -eq 1) { "::" } else { "#" }
     $hashtable.GetEnumerator() | % { 
-        $curls = @(":: $(Get-Date) `n:: -k to ignore ssl cert")
+        $curls = @("$comment_char $(Get-Date)", "$comment_char -k to ignore ssl cert")
         $uri_set = $_.key
         $uri_set_curls_file = $_.value
-        foreach ($l in $uri_set) {
-	        $curls += 'curl -k -X GET ' + "`"$l`"" + ' > NUL'   ## ' > /dev/null'
+        foreach ($l in $uri_set) {   
+            
+	        $curls += "curl -k -X GET $l $toNull"
         }
-        $curls | Out-File "$curls_dir/$uri_set_curls_file" -Encoding utf8
-        Write-Host "> $($uri_set.count) curls in $curls_dir\$uri_set_curls_file" -ForegroundColor Green
+        $curls | Out-File "$dir/$uri_set_curls_file$ext" -Encoding utf8
+        Write-Host "> $($uri_set.count) curls in $dir\$uri_set_curls_file$ext" -ForegroundColor Green
     } 
 }
 #########################################
@@ -118,9 +128,10 @@ if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid p
 # check if domain is valid
 if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! should only contain letters, numbers, -, and .' ; pause; exit }
 
-# check modes 
+# check modes and OS
 if(($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 elseif(($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 1." -ForegroundColor Yellow;	pause; exit}
+if(($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
 Try { [io.file]::OpenWrite($sitemaps_file).close() }
@@ -165,7 +176,7 @@ Write-Host "`n`n[Writing curls for sitemaps and links...]" -ForegroundColor Cyan
 # output curls of sitemap and links to files
 $hashtable0 = @{$sitemaps = $curls_sitemaps_file
                 $links = $curls_links_file}
-output_curls $hashtable0 $curls_dir
+output_curls $hashtable0 $curls_dir $OS_WinNT
 
 # continue further only if user wants to
 if($mode_sitemap_links_only -eq 1) { pause; exit }
@@ -286,7 +297,7 @@ $hashtable2=[ordered]@{ $a_href_all = $curls_a_href_file;
                         $img_srcset_all = $curls_img_srcset_file;
                         $link_rel_all = $curls_link_rel_file; 
                         $script_src_all = $curls_script_src_file ;}
-output_curls $hashtable2 $curls_dir
+output_curls $hashtable2 $curls_dir $OS_WinNT
 
 # tell user we successfully wrote curls commands for all uri sets
 Write-Host "`n> Successfully wrote curls commands for all uri sets." -ForegroundColor Green

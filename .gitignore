@@ -2,6 +2,7 @@ uri_sets
 *.txt
 curls
 *.bat
+.sh
 html
 *.html
 

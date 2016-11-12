@@ -51,9 +51,9 @@ $mode_sitemap_links_only = 0
 # Default: 0
 $mode_warm = 0
 
-# the OS that generated curls will run on
-# 0 - *nix - curls as shell (.sh) script
-# 1 - WinNT - curls as batch (.bat) scripts
+# the OS for manually executable generated curls scripts 
+# 0 - *nix  -- curls generated as shell (.sh) scripts
+# 1 - WinNT -- curls generated as batch (.bat) scripts
 # Default: 0
 $OS_WinNT = 0
 
@@ -62,6 +62,10 @@ $OS_WinNT = 0
 # 1 - turn on debugging. 
 # Default: 0
 $debug = 0
+
+# suppress errors
+# NOTE: do not edit
+$ErrorActionPreference= 'silentlycontinue'
 ############################################################# 
 
 ############### functions ###############
@@ -97,13 +101,12 @@ function replace_protocol([array]$array) {
 		$_
 	}#>
 }
-function output_curls([hashtable]$hashtable, [string]$dir, [int]$OS) { #hashtable: uri_set_array => uri_file_string
+function output_curls($hashtable, [string]$dir, [int]$OS) { #hashtable: uri_set_array => uri_file_string
     # create directory to store curls, if not existing
     if (!(Test-Path $dir)) {New-Item -ItemType directory $dir}
-    
-    $toNull = if($OS_WinNT -eq 1) { " > NUL" } else { " > /dev/null " }
-    $ext = if($OS_WinNT -eq 1) { ".bat" } else { ".sh" }
-    $comment_char = if($OS_WinNT -eq 1) { "::" } else { "#" }
+    $toNull = if($OS -eq 1) { " > NUL" } else { " > /dev/null " }
+    $ext = if($OS -eq 1) { ".bat" } else { ".sh" }
+    $comment_char = if($OS -eq 1) { "::" } else { "#" }
     $hashtable.GetEnumerator() | % { 
         $curls = @("$comment_char $(Get-Date)", "$comment_char -k to ignore ssl cert")
         $uri_set = $_.key
@@ -113,7 +116,7 @@ function output_curls([hashtable]$hashtable, [string]$dir, [int]$OS) { #hashtabl
 	        $curls += "curl -k -X GET $l $toNull"
         }
         $curls | Out-File "$dir/$uri_set_curls_file$ext" -Encoding utf8
-        Write-Host "> $($uri_set.count) curls in $dir\$uri_set_curls_file$ext" -ForegroundColor Green
+        Write-Host "> $($uri_set.count) curls in $dir/$uri_set_curls_file$ext" -ForegroundColor Green
     } 
 }
 #########################################
@@ -203,7 +206,7 @@ foreach ($l in $links_to_scrape) {
 	$html = Invoke-WebRequest -uri $l #-UseBasicParsing
     
 	# output html to file
-	$html.Content | Out-File "$html_dir\$i.html" -Encoding utf8
+	$html.Content | Out-File "$html_dir/$i.html" -Encoding utf8
 
 	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
 	$html.links | foreach {
@@ -239,7 +242,7 @@ foreach ($l in $links_to_scrape) {
 			}
 		}
 	}
-	$html.ParsedHtml.getElementsByTagName('link') | foreach {
+	if($html.ParsedHtml) { $html.ParsedHtml.getElementsByTagName('link') | foreach {
 		$val = $_.getAttributeNode('href').value
 		if(isofdomain($val)) {
 			if (!$link_rel_all.Contains($val)) {
@@ -247,8 +250,8 @@ foreach ($l in $links_to_scrape) {
 			}
 		}
 	  
-	}
-	$html.ParsedHtml.getElementsByTagName('script') | foreach {
+	} }else { Write-Host " Parsing for <link rel> URIs unavailable for *nix hosts." -ForegroundColor Yellow }
+	if($html.ParsedHtml) { $html.ParsedHtml.getElementsByTagName('script') | foreach {
 		$val = $_.getAttributeNode('src').value
 		if(isofdomain($val)) {
 			if (!$script_src_all.Contains($val)) {
@@ -256,16 +259,16 @@ foreach ($l in $links_to_scrape) {
 			}
 		}
 	   
-	}
+	} }else { Write-Host " Parsing for <script src> URIs unavailable for *nix hosts." -ForegroundColor Yellow }
 
 }
 Write-Host "> Successfully retrieved all uri sets." -ForegroundColor Green
 # map uri sets to files
-$hashtable1=[ordered]@{  $a_href_all = $a_href_file;
+$hashtable1=[ordered]@{ $a_href_all = $a_href_file;
 						$img_src_all = $img_src_file;
 						$img_srcset_all = $img_srcset_file;
 						$link_rel_all = $link_rel_file; 
-						$script_src_all = $script_src_file ;}
+						$script_src_all = $script_src_file ;} #hashtable: uri_set_array => uri_file_string
 # replace protocol with our desired for all uris
 $hashtable1.GetEnumerator() | % { 
    replace_protocol ($_.key)
@@ -281,8 +284,8 @@ if (!(Test-Path $uri_sets_dir)) {New-Item -ItemType directory $uri_sets_dir}
 $hashtable1.GetEnumerator() | % { 
    $uri_set = $_.key
    $uri_set_file = $_.value
-   $uri_set | Out-File "$uri_sets_dir\$uri_set_file" -Encoding utf8
-   Write-Host "> $($uri_set.count) uris in $uri_sets_dir\$uri_set_file" -ForegroundColor Green
+   $uri_set | Out-File "$uri_sets_dir/$uri_set_file" -Encoding utf8
+   Write-Host "> $($uri_set.count) uris in $uri_sets_dir/$uri_set_file" -ForegroundColor Green
 }
 
 # tell user we successfully wrote all uri sets to their files
@@ -296,7 +299,7 @@ $hashtable2=[ordered]@{ $a_href_all = $curls_a_href_file;
                         $img_src_all = $curls_img_src_file;
                         $img_srcset_all = $curls_img_srcset_file;
                         $link_rel_all = $curls_link_rel_file; 
-                        $script_src_all = $curls_script_src_file ;}
+                        $script_src_all = $curls_script_src_file ;} #hashtable: uri_set_array => uri_file_string
 output_curls $hashtable2 $curls_dir $OS_WinNT
 
 # tell user we successfully wrote curls commands for all uri sets
@@ -309,10 +312,18 @@ if($mode_warm -eq 1) {
 	# tell user we are going to warm only a_href uri set
 	Write-Host "`n`n[Warming only a_href uri set ...] " -ForegroundColor Cyan
 
-	# warm all a_hrefs that hasn't been scraped earlier
 	Compare-Object $a_href_all $links_to_scrape | where {$_.sideindicator -eq "<="} | foreach {
-		$tmp = Invoke-RestMethod -uri $_.InputObject # Invoke-WebRequest -uri $_.InputObject
+        $uri = $_.InputObject
+        Write-Host " Warming $uri"
+        $res = ''
+        # [next line currently bugged. Can't warm images on *nix]
+        #$res = Invoke-WebRequest -uri $uri -ErrorAction SilentlyContinue -ErrorVariable Err
+        # [temp fix on next line]
+        $res = curl $uri # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
+        if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 	}
+
+    # warm all a_hrefs that hasn't been scraped earlier
 	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
 }elseif($mode_warm -eq 2) {
 	# tell user we are going to warm all uri sets
@@ -323,10 +334,16 @@ if($mode_warm -eq 1) {
 		$uri_set_file = $_.value
 		Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
 		$uri_set | foreach {
-			$tmp = Invoke-RestMethod -uri $_
+            Write-Host " Warming $uri"
+            $res = ''
+            # [next line currently bugged. Can't warm images on *nix]
+            #$res = Invoke-WebRequest -uri $_ -ErrorAction SilentlyContinue -ErrorVariable Err
+            # [temp fix on next line]
+            $res = curl $uri # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
+            if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 		}
 	}
-	Write-Host "`n> Successfully warmed all uris sets" -ForegroundColor Green
+	Write-Host "`n> Successfully warmed all uri sets" -ForegroundColor Green
 }else {}
 
 pause

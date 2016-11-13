@@ -27,7 +27,7 @@ $uri_sets_dir = "uri_sets"
 $a_href_file = "a_href.txt"
 $img_src_file = "img_src.txt"
 $img_srcset_file = "img_srcset.txt"
-$link_rel_file = "link_rel.txt"
+$link_href_file = "link_href.txt"
 $script_src_file = "script_src.txt"
 $curls_dir = "curls"
 $curls_sitemaps_file = "sitemaps"
@@ -35,7 +35,7 @@ $curls_links_file = "links"
 $curls_a_href_file = "a_href"
 $curls_img_src_file = "img_src"
 $curls_img_srcset_file = "img_srcset"
-$curls_link_rel_file = "link_rel"
+$curls_link_href_file = "link_href"
 $curls_script_src_file = "script_src"
 
 # whether the script should stop at just retreiving sitemaps links, or continue to get all uris from all those links
@@ -47,7 +47,7 @@ $mode_sitemap_links_only = 0
 # whether to warm site with all retrieved uris
 # 0 - do not warm site
 # 1 - warm a_href uris only
-# 2 - warm all uris (a_href, img_src, img_srcset, link_rel, script_src)
+# 2 - warm all uris (a_href, img_src, img_srcset, link_href, script_src)
 # Default: 0
 $mode_warm = 0
 
@@ -69,20 +69,61 @@ $ErrorActionPreference= 'silentlycontinue'
 ############################################################# 
 
 ############### functions ###############
-# checks if uri belongs to our domain
-function isofdomain([string]$str) {
-	# generate domain regex
-	$regex_str = '(?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/'
-	[bool]$cond1 = $str -match $regex_str
-	[bool]$cond2 = $str -match '#' # don't include
-	if ( $cond1 -and !$cond2 ){
-		return $true
-	}else {
+# checks if uri is valid.
+function uri_is_valid ([string]$str) {
+	# don't include uri's with hash sign
+    [bool]$cond1 = $str -match '#' 
+
+    # include uris of our domain
+    [bool]$cond2 = $str -match '^(?:https?:)?\/\/' + $domain.replace('.', '\.').replace('-', '\-') 
+
+    if ( $cond1 ){
 		return $false
 	}
+    if ( $cond2 ) {
+        return $true
+    }
+    return $false
 }
 
-# replace protocol with our desired
+# manually parses html to get uris for a specific tag-attribute pairing.
+ # Param 1: html string
+ # Param 2: html tag e.g. img
+ # Param 3: html tag's attribute e.g. src
+ # Param 4: array to store uris
+#
+function get_uris ([string]$html_str, [string]$tag, [string]$attr, [array]$array) {
+    # split html by html tag opening char i.e. <
+    $html_arr = $html_str.split('<')
+    
+    # for each line with tag of interest found, do
+    $html_arr | where { $_ -match "^$tag "} | foreach { # <img 
+        # capture attribute's value
+        $captures = [regex]::Match( $_, " $attr=(?:`"([^\`"]*)`"|'([^']*)')" ) # src="(https://theohbrothers.com/)"
+        $attr_val = if($captures.Groups[1].value -ne '') {$captures.Groups[1].value} else {$captures.Groups[2].value}
+        if($debug) { write-host "$_`n : $($captures.Groups[1].value -eq '') vs $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
+
+        # in the case of comma-delimited values e.g. <img srcset>, split values
+        $attr_vals = $attr_val.Split(',') # for <img srcset="http://tob.com/1.jpg 150w, http://tob.com/2.jpg 250w, ..."
+        
+        # for each value, do
+        $attr_vals | foreach {
+            $regex = "((?:https?:)?\/\/[^\s`'`"]+)"  # matches uris
+			$captures = [regex]::Match( $_, $regex)
+			$val = $captures.Groups[0].Value
+
+            # filter uris we want
+			if (uri_is_valid ($val)) {
+				if (!$array.Contains($val)) {
+					$array += $val
+				}
+			}
+        } 
+    }
+    return $array
+}
+
+# replaces protocol with our desired
 function replace_protocol([array]$array) {
 	#Write-Host $array.Count
 	for($i=0; $i -lt $array.count; $i++) {
@@ -101,7 +142,12 @@ function replace_protocol([array]$array) {
 		$_
 	}#>
 }
-function output_curls($hashtable, [string]$dir, [int]$OS) { #hashtable: uri_set_array => uri_file_string
+# ouputs curls to a file
+ # Param 1: hashtable of format: uri_set_array => uri_file_string
+ # Param 2: directory to write curl files 
+ # Param 3: OS that curls will run on. 0: *nix; 1: WinNT
+#
+function output_curls($hashtable, [string]$dir, [int]$OS) {
     # create directory to store curls, if not existing
     if (!(Test-Path $dir)) {New-Item -ItemType directory $dir}
     $toNull = if($OS -eq 1) { " > NUL" } else { " > /dev/null " }
@@ -132,9 +178,9 @@ if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid p
 if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! should only contain letters, numbers, -, and .' ; pause; exit }
 
 # check modes and OS
-if(($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
+if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 elseif(($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 1." -ForegroundColor Yellow;	pause; exit}
-if(($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
+if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
 Try { [io.file]::OpenWrite($sitemaps_file).close() }
@@ -144,9 +190,9 @@ Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # get main sitemap as xml object
 $http_response = ''
 $http_response = Invoke-WebRequest -Uri $sitemap -UseBasicParsing
-if($http_response.StatusCode -ne '200') { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
+if ($http_response.StatusCode -ne '200') { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
 [xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) #  
-if($debug) { Format-XML -InputObject $contentInXML }
+if ($debug) { Format-XML -InputObject $contentInXML }
 
 # parse main sitemap to get sitemaps as xml objects
 $sitemaps = $contentInXML.sitemapindex.sitemap.loc
@@ -177,7 +223,7 @@ Write-Host "> $($links.count) links in $links_file" -ForegroundColor Green
 Write-Host "`n`n[Writing curls for sitemaps and links...]" -ForegroundColor Cyan
 
 # output curls of sitemap and links to files
-$hashtable0 = @{$sitemaps = $curls_sitemaps_file
+$hashtable0 = [ordered]@{$sitemaps = $curls_sitemaps_file
                 $links = $curls_links_file}
 output_curls $hashtable0 $curls_dir $OS_WinNT
 
@@ -188,18 +234,18 @@ if($mode_sitemap_links_only -eq 1) { pause; exit }
 Write-Host "`n`n[Scraping links to get uri sets ...]" -ForegroundColor Cyan
 
 # scrape all links from our site for all uri sets
-$links_to_scrape = Get-Content -Path $links_file
+$links_to_scrape = Get-Content -Path $links_file -Encoding utf8
 $a_href_all = @()
-$link_rel_all = @()
+$link_href_all = @()
 $img_src_all = @()
 $img_srcset_all = @()
 $script_src_all = @()
-$i = 0; # number of scrapes
+$i = 0; # number of links scraped
 
 # create directory to store .html, if not existing
 if (!(Test-Path $html_dir)) {New-Item -ItemType directory $html_dir} # create html folder if not existing
 
-# scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
+# scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
 foreach ($l in $links_to_scrape) {
 	$i++
 	# Scrape, while warming the link
@@ -208,10 +254,10 @@ foreach ($l in $links_to_scrape) {
 	# output html to file
 	$html.Content | Out-File "$html_dir/$i.html" -Encoding utf8
 
-	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link rel>, <script src>
+	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
 	$html.links | foreach {
 		$val = $_.href
-		if(isofdomain($val)) {
+		if (uri_is_valid($val)) {
 			if (!$a_href_all.Contains($val)) {
 				$a_href_all += $val
 			}
@@ -219,55 +265,25 @@ foreach ($l in $links_to_scrape) {
 	}
 	$html.Images | foreach {
 		$val = $_.src
-		if(isofdomain($val)) {
+		if (uri_is_valid($val)) {
 			if (!$img_src_all.Contains($val)) {
 				$img_src_all += $val
 			}
 		}
 	}
-	$html.Images | foreach {
-		# if no srcset, continue with next
-		if(!$_.srcset) { <#Write-Host 'no srcset';#> return } # continue is return for powershell 
-		
-		# break up srcsets
-		$val = $_.srcset
-		$vals = $val.Split(',')
-		$vals | foreach {
-			$captures = [regex]::Match( $_, '((?:https?:)?\/\/' + $domain.replace('.', '\.') + '\/[^\s]+)' )
-			$src = $captures.Groups[0].Value
-			if(isofdomain($src)) {
-				if (!$img_srcset_all.Contains($src)) {
-					$img_srcset_all += $src
-				}
-			}
-		}
-	}
-	if($html.ParsedHtml) { $html.ParsedHtml.getElementsByTagName('link') | foreach {
-		$val = $_.getAttributeNode('href').value
-		if(isofdomain($val)) {
-			if (!$link_rel_all.Contains($val)) {
-				$link_rel_all += $val
-			}
-		}
-	  
-	} }else { Write-Host " Parsing for <link rel> URIs unavailable for *nix hosts." -ForegroundColor Yellow }
-	if($html.ParsedHtml) { $html.ParsedHtml.getElementsByTagName('script') | foreach {
-		$val = $_.getAttributeNode('src').value
-		if(isofdomain($val)) {
-			if (!$script_src_all.Contains($val)) {
-				$script_src_all += $val
-			}
-		}
-	   
-	} }else { Write-Host " Parsing for <script src> URIs unavailable for *nix hosts." -ForegroundColor Yellow }
-
+    # use manual parsing of offline html for other uri sets (works on *nix without IE's parsing)
+    $html = Get-Content "$html_dir/$i.html" -Raw -Encoding utf8
+    $img_srcset_all = get_uris $html 'img' 'srcset' $img_srcset_all 
+    $link_href_all = get_uris $html 'link' 'href' $link_href_all
+    $script_src_all = get_uris $html 'script' 'src' $script_src_all
 }
 Write-Host "> Successfully retrieved all uri sets." -ForegroundColor Green
 # map uri sets to files
+$hashtable1=''
 $hashtable1=[ordered]@{ $a_href_all = $a_href_file;
 						$img_src_all = $img_src_file;
 						$img_srcset_all = $img_srcset_file;
-						$link_rel_all = $link_rel_file; 
+						$link_href_all = $link_href_file; 
 						$script_src_all = $script_src_file ;} #hashtable: uri_set_array => uri_file_string
 # replace protocol with our desired for all uris
 $hashtable1.GetEnumerator() | % { 
@@ -295,10 +311,11 @@ Write-Host "`n> Successfully output all uri sets to their files." -ForegroundCol
 Write-Host "`n`n[Writing curls for all uri sets to their files...]" -ForegroundColor Cyan
 
 # output curls uri sets to files
+$hashtable2=''
 $hashtable2=[ordered]@{ $a_href_all = $curls_a_href_file;
                         $img_src_all = $curls_img_src_file;
                         $img_srcset_all = $curls_img_srcset_file;
-                        $link_rel_all = $curls_link_rel_file; 
+                        $link_href_all = $curls_link_href_file; 
                         $script_src_all = $curls_script_src_file ;} #hashtable: uri_set_array => uri_file_string
 output_curls $hashtable2 $curls_dir $OS_WinNT
 
@@ -345,5 +362,3 @@ if($mode_warm -eq 1) {
 	}
 	Write-Host "`n> Successfully warmed all uri sets" -ForegroundColor Green
 }else {}
-
-pause

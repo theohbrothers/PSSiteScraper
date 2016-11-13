@@ -47,7 +47,7 @@ Q: Help! I am getting a Internet Explorer popup warning that <code>'Content with
 - If Internet Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script; the only way around this is to turn off IE ESC. The script uses IE's html parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
 
 ## NOTE:
-- By default, script directory (where you run the script) needs <b>write permission</b>. All created files/folders will reside in the script directory.
+- By default, script directory (where you run the script) needs <b>read, execute, write permissions</b>. All created files/folders will reside in the script directory.
 
 ## Background: 
 - Sysadmins may need a list of their sitemaps, or links from those sitemaps. This scripts generates them in seconds.

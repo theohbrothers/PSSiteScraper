@@ -207,6 +207,9 @@ foreach ($s in $sitemaps) {
 	$i++
 }
 
+# add main sitemap to sitemaps collection
+$sitemaps = ($sitemaps + $sitemap) | Sort-Object
+
 # print sitemaps and links
 Write-Host " `n>Sitemaps (total: $($sitemaps.count)):" -ForegroundColor Green
 foreach ($s in $sitemaps) { Write-Host $s }

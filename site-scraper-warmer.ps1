@@ -99,7 +99,7 @@ function get_uris ([string]$html_str, [string]$tag, [string]$attr, [array]$array
     # for each line with tag of interest found, do
     $html_arr | where { $_ -match "^$tag "} | foreach { # <img 
         # capture attribute's value
-        $captures = [regex]::Match( $_, " $attr=(?:`"([^\`"]*)`"|'([^']*)')" ) # src="(https://theohbrothers.com/)"
+        $captures = [regex]::Match( $_, " $attr=(?:`"([^`"]*)`"|'([^']*)')" ) # src="(https://theohbrothers.com/)"
         $attr_val = if($captures.Groups[1].value -ne '') {$captures.Groups[1].value} else {$captures.Groups[2].value}
         if($debug) { write-host "$_`n : $($captures.Groups[1].value -eq '') vs $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
 
@@ -150,9 +150,9 @@ function replace_protocol([array]$array) {
 function output_curls($hashtable, [string]$dir, [int]$OS) {
     # create directory to store curls, if not existing
     if (!(Test-Path $dir)) {New-Item -ItemType directory $dir}
+    $comment_char = if($OS -eq 1) { "::" } else { "#" }
     $toNull = if($OS -eq 1) { " > NUL" } else { " > /dev/null " }
     $ext = if($OS -eq 1) { ".bat" } else { ".sh" }
-    $comment_char = if($OS -eq 1) { "::" } else { "#" }
     $hashtable.GetEnumerator() | % { 
         $curls = @("$comment_char $(Get-Date)", "$comment_char -k to ignore ssl cert")
         $uri_set = $_.key
@@ -179,7 +179,7 @@ if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! shou
 
 # check modes and OS
 if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-elseif(($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 1." -ForegroundColor Yellow;	pause; exit}
+elseif(($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory

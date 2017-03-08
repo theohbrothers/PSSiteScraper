@@ -2,13 +2,14 @@
 This Powershell script has the ability to retrieve and output all of a site's URIs by scraping its sitemap for links, followed by parsing HTML of those links, and gives an option to warm the site automatically or manually through generated curls.
 
 ## Features:
-- Retrieve links from sitemaps, starting with the main sitemap.
+- Starting with a site's parent sitemap, scrape for child sitemaps and get all links
 - Output sitemaps and links as list and curls in individual files.
-- Choice whether to scrape retrieved links for URIs found in <i>any tag-attribute combination</i> you want. E.g. <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;img data-src&gt;, &lt;img data-srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
+- Choice whether to scrape links for URIs found in <i>any tag-attribute combination</i> you want. E.g. <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;img data-src&gt;, &lt;img data-srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
 - URIs are domain-specific (i.e. same domain as the sitemaps and links).
 - Output each tag-attribute's URIs to files
 - Output each tag-attribute's URIs as curls to files
 - Choice whether to warm site with the above URIs as part of script.
+
 ## Requirements:
 - <a href="https://github.com/PowerShell/PowerShell#get-powershell" target="_blank">Powershell v3</a>
 - Windows / *nix environment

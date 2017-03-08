@@ -5,5 +5,5 @@ curls
 .sh
 html
 *.html
-
+*test*.ps1
 

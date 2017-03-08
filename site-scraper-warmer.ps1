@@ -237,7 +237,7 @@ if($mode_sitemap_links_only -eq 1) { pause; exit }
 # determine uri_sets that should be search for
 $uri_sets = [ordered]@{} # hashtable: [string]$tag => [array]$attributes
 foreach ($combo in $tag_attribute_combos) {
-    $split = $combo.split( @(',', ' ') ).trim() | ? {$_} # exclude empty values. 
+    $split = $combo.split(',').split(' ').trim() | ? {$_} # split to array, by both , and space. exclude empty values. 
    
     for($i=0; $i -lt $split.count; $i++) {
         # skip over odd numbers
@@ -246,7 +246,6 @@ foreach ($combo in $tag_attribute_combos) {
         $tag  = $split[$i]
         $attr = $split[$i+1]
 
-        
         # skip over invalid tags / attributes (may contain letters and dashes only)
         if($tag -match [regex]"^[A-Za-z\-]+" -eq $false -or $tag -match [regex]"^[A-Za-z\-]+" -eq $false) { continue }
 

@@ -23,8 +23,10 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 - *nix:
   - Run <code>powershell ./site-scraper-warmer.ps1</code>
   
-## FAQ
-Q: Help! I am getting an error <code>'File C:\Users\User\rmdups\rmdups.ps1 cannot be loaded because the execution of scripts is disabled on this system. Please see "get-help about_signing" for more details.'</code>
+## FAQ 
+
+### WinNT
+Q: Help! I am getting an error <code>'File C:\...site-scraper-warmer.ps1 cannot be loaded because the execution of scripts is disabled on this system. Please see "get-help about_signing" for more details.'</code>
 - You need to allow the execution of unverified scripts. Open Powershell as administrator, type <code>Set-ExecutionPolicy Unrestricted -Force</code> and press ENTER. Try running the script again. You can easily restore the security setting back by using <code>Set-ExecutionPolicy Undefined -Force</code>.
 
 Q: Help! Upon running the script I am getting a warning <code>'Execution Policy change. The execution policy helps protect you from scripts that you do not trust. Changing the execution policy might expose you to the security risks described in the about_Execution_Policies help topic at http://go.microsoft.com/?LinkID=135170. Do you want to change the execution policy?</code>
@@ -33,14 +35,16 @@ Q: Help! Upon running the script I am getting a warning <code>'Execution Policy 
 Q: Help! I am getting a Internet Explorer popup warning that <code>'Content within this application coming from the website listed below is being blocked by Internet Explorer Enhanced Security Configuration.'</code>
 - On Windows Servers, this is a known issue with IE Enhanced Security Configuration (ESC); the only way around this is to turn off IE ESC. The script uses IE's HTML parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
 
+### *nix
+Nil
+
 ## Known issues
-- If Internet Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script; the only way around this is to turn off IE ESC. The script uses IE's html parsing engine to get uris, which might involve running <code>&lt;script&gt;</code> tags that IE ESC attempts to protect your system from. 
+- If Internet Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script if Powershell UI is open, or else the script will hang. The only way around this is to turn off IE ESC.
 
 ## NOTE:
 - By default, script directory (where you run the script) needs <b>read, execute, write permissions</b>. All created files/folders will reside in the script directory.
 
-## Background: 
-																													
+## Background: 								
 - Website owners may want warm their site (i.e. "preload the cache") from a remote client especially so if they use Content Delivery Networks (CDNs).
 - Search Engine Optimization (SEO) typically involves optimizing a website's load times, which can drastically decrease if the website has preloaded its cache. This script can be configured to do this automatically; alternatively site warming can be achieved through using the curls generated in separate files for portability.
 - Website owners might want a list of links of all their resources (blog posts, media, etc.) if they intend to migrate their site (e.g. changing a domain name).. This script can search for all of those and output them as a list.

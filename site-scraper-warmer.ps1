@@ -55,13 +55,17 @@ $OS_WinNT = 0
 
 # debug mode
 # 0 - turn off debugging.
-# 1 - turn on debugging. 
+# >=1, values are additive. Enter then sum of the values corresponding to the outputs you want:
+#   1 - Performance metrics
+#   2 - Operations (General)
+#   4 - Operations (Verbose)
 # Default: 0
 $debug = 0
 
-# suppress errors
+# suppress errors / progress
 # NOTE: do not edit
-$ErrorActionPreference= 'silentlycontinue'
+$ErrorActionPreference = 'silentlycontinue'
+$progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-WebRequest
 ############################################################# 
 
 ############### functions ###############
@@ -69,16 +73,17 @@ $ErrorActionPreference= 'silentlycontinue'
 function uri_is_valid ([string]$str) {
 	# don't include uri's with hash sign
     [bool]$cond1 = $str -match '#' 
-
-    # include uris of our domain
-    [bool]$cond2 = $str -match '^(?:https?:)?\/\/' + $domain.replace('.', '\.').replace('-', '\-') 
-
     if ( $cond1 ){
 		return $false
 	}
+
+    # include uris of our domain
+    $domain_regex = $domain.replace('.', '\.').replace('-', '\-')
+    [bool]$cond2 = $str -match "^(?:https?:)?\/\/$domain_regex"  
     if ( $cond2 ) {
         return $true
     }
+
     return $false
 }
 
@@ -93,21 +98,21 @@ function get_uris ([string]$html_str, [string]$tag, [string]$attr, [System.Colle
     $html_arr = $html_str.split('<')
 
     # for each line with tag of interest found, do
-    $html_arr | where { $_ -match "^$tag "} | foreach { # e.g. <img 
+    $html_arr | where { $_ -match "^$tag"} | foreach { # e.g. <img 
         # capture attribute's value
         $attr_regex = $attr.replace('.', '\.').replace('-', '\-') 
-        $regex = " $attr_regex=(?:`"([^`"]*)`"|'([^']*)')" # e.g. data\-src="(https://theohbrothers.com/)"
+        $regex = "\s$attr_regex=(?:`"([^`"]*)`"|'([^']*)')" # e.g. data\-src="(https://theohbrothers.com/)"
         $captures = [regex]::Match( $_, $regex ) 
         $attr_val = if($captures.Groups[1].value -ne '') {$captures.Groups[1].value} else {$captures.Groups[2].value}
-        if($debug) { write-host "`n$_`nRegex:$regex`n Group 1 (double-quotes) found: $($captures.Groups[1].value -eq ''), Group 2 (single-quotes) found: $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
+        if($debug -band 4) { write-host "`n$_`nRegex:$regex`n Group 1 (double-quotes) found: $($captures.Groups[1].value -eq ''), Group 2 (single-quotes) found: $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
 
         # in the case of comma-delimited values e.g. <img srcset>, split values
         $attr_vals = $attr_val.Split(',') # for <img srcset="http://tob.com/1.jpg 150w, http://tob.com/2.jpg 250w, ..."
         
         # for each value, do
         $attr_vals | foreach {
-            $regex = "((?:https?:)?\/\/[^\s`'`"]+)"  # matches uris
-			$captures = [regex]::Match( $_, $regex)
+            $uri_regex = "((?:https?:)?\/\/[^\s`'`"]+)"  # matches uris
+			$captures = [regex]::Match( $_, $uri_regex)
 			$val = $captures.Groups[0].Value
 
             # filter uris we want
@@ -185,11 +190,13 @@ Catch { Write-Warning "Script directory has to be writeable to output links to f
 
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # get main sitemap as xml object
-$http_response = ''
-$http_response = Invoke-WebRequest -Uri $sitemap -UseBasicParsing
-if ($http_response.StatusCode -ne '200') { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
-[xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) #  
-if ($debug) { Format-XML -InputObject $contentInXML }
+$http_body = ''
+# Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
+$http_body = Invoke-WebRequest -Uri $sitemap -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+#$http_body = Invoke-RestMethod -Uri $sitemap -Method GET
+if ($http_body -eq $NULL) { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
+[xml]$contentInXML = $http_body # (New-Object System.Net.WebClient).DownloadString($sitemap) 
+if ($debug -band 4) { Format-XML -InputObject $contentInXML }
 
 # parse main sitemap to get sitemaps as xml objects
 $sitemaps = $contentInXML.sitemapindex.sitemap.loc
@@ -197,9 +204,12 @@ $sitemaps = $contentInXML.sitemapindex.sitemap.loc
 # get links in sitemaps
 $links = @()
 foreach ($s in $sitemaps) {
-	Write-Host "> Retreiving $s"
-	[xml]$contentInXML = ((Invoke-WebRequest -Uri $s -UseBasicParsing).Content)  # (New-Object System.Net.WebClient).DownloadString($s) # 
-	if($debug) { Format-XML -InputObject $contentInXML }
+    # Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
+    $http_response = Invoke-WebRequest -Uri $s -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+    #$http_response = Invoke-RestMethod -Uri $s -Method GET -UseBasicParsing - # UseBasicParsing disable DOM parsing for OSes without IE  # (New-Object System.Net.WebClient).DownloadString($s) # 
+    if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach child sitemap: $sitemap." -ForegroundColor yellow; continue } else { Write-Host "Child sitemap reached: $s" -ForegroundColor Green }
+	[xml]$contentInXML = ($http_response.Content) 
+	if($debug -band 4) { Format-XML -InputObject $contentInXML }
 	$links += $contentInXML.urlset.url.loc
 	$i++
 }
@@ -234,8 +244,8 @@ output_curls $hashtable0 $curls_dir $OS_WinNT
 # continue further only if user wants to
 if($mode_sitemap_links_only -eq 1) { pause; exit }
 
-# determine uri_sets that should be search for
-$uri_sets = [ordered]@{} # hashtable: [string]$tag => [array]$attributes
+# build a hashtable of desired uri_sets 
+$uri_sets = [ordered]@{} # hashtable: [string]$tag => [array]$attributes. E.g. @{ 'a' = @('href');  'img' = @('src', 'data-src', 'srcset', 'data-srcset'); 'link' = @('href'); 'script' = @('src'); }
 foreach ($combo in $tag_attribute_combos) {
     $split = $combo.split(',').split(' ').trim() | ? {$_} # split to array, by both , and space. exclude empty values. 
    
@@ -265,10 +275,9 @@ foreach ($combo in $tag_attribute_combos) {
     }
 }
 
-
 # show the user the uri sets we will search for
-Write-Host "`n`n[Uri sets to search for]" -ForegroundColor Cyan
-$uri_sets 
+Write-Host "`n`n[Desired uri sets]" -ForegroundColor Cyan
+$uri_sets
 
 # get all links of our site to scrape 
 $links_to_scrape = Get-Content -Path $links_file -Encoding utf8
@@ -285,24 +294,32 @@ $uri_sets.GetEnumerator() | % {
         Set-Variable -Name "$($tag)_$($attr)_all" -Value $new
     }
 }
+
 # tell user we are going to scrape all site's links for uri sets
-Write-Host "`n`n[Scraping site's links to get desired
- uri sets ...]" -ForegroundColor Cyan
+Write-Host "`n`n[Scraping site's links to get desired uri sets ...]" -ForegroundColor Cyan
 
 # create directory to store .html, if not existing
 if (!(Test-Path $html_dir)) {$null = New-Item -ItemType directory $html_dir; }  # Assigning it to $null removes the return value
 
+if($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_miliseconds = 0; }
 # scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
 foreach ($l in $links_to_scrape) {
+  #$measure_get = Measure-Command {
+  
 	$i++
-	# Scrape, while warming the link
-	$html = Invoke-WebRequest -uri $l -UseBasicParsing
-    
+
+    # scrape, while warming the link
+    # Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
+	$http_response = Invoke-WebRequest -uri $l -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+    #$http_response = Invoke-RestMethod -uri $l -Method GET -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+
+    if ($http_response.StatusCode -ne 200)  { Write-Host "`n>Could not reach link: $l" -ForegroundColor yellow; continue } else { Write-Host "`n>Link $i reached: $l" -ForegroundColor Green }
+    $html = $http_response.Content
 	# output html to file
-	$html.Content | Out-File "$html_dir/$i.html" -Encoding utf8
+	$html | Out-File "$html_dir/$i.html" -Encoding utf8 
 
 	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
-    # edit 2017 March - not using engine to parse html anymore
+    # edit 2017 March - not using DOM parsing anymore
 	<#$html.links | foreach {
 		$val = $_.href
 		if (uri_is_valid($val)) {
@@ -319,26 +336,46 @@ foreach ($l in $links_to_scrape) {
 			}
 		}
 	}#>
-    # use manual parsing of offline html for other uri sets (works on *nix without IE's parsing)
-    $html = Get-Content "$html_dir/$i.html" -Raw -Encoding utf8
+  #} ## end measure_get ##
+
+  if($debug -band 1) {
+    $measure_get_total_miliseconds += $measure_get.TotalMilliseconds
+    Write-Host "`tgetting link $i took" $measure_get.Milliseconds "ms" -ForegroundColor DarkCyan
+  }
+
+  #$measure_parse = Measure-Command {
+    # get raw html from file
+    # edit 2017 March - no longer using offline html (works on *nix without IE's parsing)
+    #$html = Get-Content "$html_dir/$i.html" -Raw -Encoding utf8
+
+    # for each desired uri set, get its uri
     $uri_sets.GetEnumerator() | % {
         $tag = $_.key
         $attrs = $_.value
         foreach ($attr in $attrs) {
+          $measure_each_parse = Measure-Command {
             $uri_set = Get-Variable -Name "$($tag)_$($attr)_all" -ValueOnly # returns null if variable doesn't exist, or else returns an arraylist
             get_uris $html $tag $attr $uri_set         # e.g. $uri_set = get_uris $html 'a' 'href' $uri_set_all 
             # declare new variable with value
             Set-Variable -Name "$($tag)_$($attr)_all" -Value $uri_set  # e.g. $a_href_all = $uri_set, e.g. $img_src_all = $uri_set
-            if($debug) { "$tag $attr $($tag)_$($attr)_all" }
+            if($debug -band 2) { Write-Host "Tag: $tag $attr, in variable: $($tag)_$($attr)_all" -ForegroundColor Gray}
+          if($debug -band 1) { Write-Host "`t parse <$tag $attr> took" $measure_each_parse.Milliseconds "ms" -ForegroundColor DarkCyan }
+          } ## end measure_each_parse ##
         }
+          
     }
+  #} ## end measure_parse ##
+  if($debug -band 1) {
+    $measure_parse_total_miliseconds += $measure_parse.TotalMilliseconds
+    Write-Host "`tparsing link $i took" $measure_parse.Milliseconds "ms" -ForegroundColor DarkCyan
+  }
 }
 # tell user we successfully retrieved all uri sets from our site's links
-Write-Host "> Successfully retrieved all uri sets from site's links." -ForegroundColor Green
+Write-Host "`n> Successfully retrieved all uri sets from site's links." -ForegroundColor Green
 
 # debug - any empty uri sets?
-if ($debug) { 
-    Write-Host "`n`n[Debug - Checking for any empty uri sets ...]" -ForegroundColor Cyan
+if ($debug -band 2) { 
+    Write-Host "`n`n[Debug - Listing empty uri sets ...]" -ForegroundColor Gray
     $uri_sets.GetEnumerator() | % {
         $tag = $_.key
         $attrs = $_.value
@@ -367,7 +404,7 @@ $uri_sets.GetEnumerator() | % {
 }
 
 # debug - show individual uri sets' contents
-if ($debug) { 
+if ($debug -band 4) { 
     Write-Host "`n`n[Debug - Showing individual uri set's content ...]" -ForegroundColor Cyan
     $hashtable1.GetEnumerator() | % {
         Write-Host "`n ---- $($_.value) ----"
@@ -420,7 +457,7 @@ if($mode_warm -eq 1) {
         # [next line currently bugged. Can't warm images on *nix]
         #$res = Invoke-WebRequest -uri $uri -ErrorAction SilentlyContinue -ErrorVariable Err
         # [temp fix on next line]
-        $res = curl $uri # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
+        $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
         if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 	}
 
@@ -440,7 +477,7 @@ if($mode_warm -eq 1) {
             # [next line currently bugged. Can't warm images on *nix]
             #$res = Invoke-WebRequest -uri $_ -ErrorAction SilentlyContinue -ErrorVariable Err
             # [temp fix on next line]
-            $res = curl $uri # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
+            $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
             if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 		}
 	}

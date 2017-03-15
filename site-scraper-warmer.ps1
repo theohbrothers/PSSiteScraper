@@ -103,8 +103,8 @@ function get_uris ([string]$html_str, [string]$tag, [string]$attr, [System.Colle
         $attr_regex = $attr.replace('.', '\.').replace('-', '\-') 
         $regex = "\s$attr_regex=(?:`"([^`"]*)`"|'([^']*)')" # e.g. data\-src="(https://theohbrothers.com/)"
         $captures = [regex]::Match( $_, $regex ) 
-        $attr_val = if($captures.Groups[1].value -ne '') {$captures.Groups[1].value} else {$captures.Groups[2].value}
-        if($debug -band 4) { write-host "`n$_`nRegex:$regex`n Group 1 (double-quotes) found: $($captures.Groups[1].value -eq ''), Group 2 (single-quotes) found: $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
+        $attr_val = if ($captures.Groups[1].value -ne '') {$captures.Groups[1].value} else {$captures.Groups[2].value}
+        if ($debug -band 4) { write-host "`n$_`nRegex:$regex`n Group 1 (double-quotes) found: $($captures.Groups[1].value -eq ''), Group 2 (single-quotes) found: $($captures.Groups[2].value -eq '') `n 1: $($captures.Groups[1].value)`n 2: $($captures.Groups[2].value)"; }
 
         # in the case of comma-delimited values e.g. <img srcset>, split values
         $attr_vals = $attr_val.Split(',') # for <img srcset="http://tob.com/1.jpg 150w, http://tob.com/2.jpg 250w, ..."
@@ -133,6 +133,7 @@ function replace_protocol($array) {
 	for($i=0; $i -lt $array.count; $i++) {
 		$uri = $array[$i]
 		$matches = [regex]::Match( $uri, '^((?:https?:)?\/\/)' ) # capture protocol part including the //
+        if ($matches.success -eq $false) { continue }
 		$uri_protocol = $matches.Groups[1].Value
 		$array[$i] = $uri -replace $uri_protocol, $desired_protocol
 	}
@@ -153,9 +154,9 @@ function replace_protocol($array) {
 function output_curls($hashtable, [string]$dir, [int]$OS) {
     # create directory to store curls, if not existing
     if (!(Test-Path $dir)) {$null = New-Item -ItemType directory $dir} # Assigning it to $null removes the return value
-    $commentChar = if($OS -eq 1) { "::" } else { "#" }
-    $toNull = if($OS -eq 1) { " >NUL" } else { " > /dev/null " }
-    $extension = if($OS -eq 1) { ".bat" } else { ".sh" }
+    $commentChar = if ($OS -eq 1) { "::" } else { "#" }
+    $toNull = if ($OS -eq 1) { " >NUL" } else { " > /dev/null " }
+    $extension = if ($OS -eq 1) { ".bat" } else { ".sh" }
     $hashtable.GetEnumerator() | % { 
         $curls = @("$commentChar $(Get-Date)", "$commentChar -k to ignore ssl cert")
         $uri_set = $_.key
@@ -181,7 +182,7 @@ if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! shou
 
 # check modes and OS
 if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-elseif(($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
+elseif (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
@@ -209,7 +210,7 @@ foreach ($s in $sitemaps) {
     #$http_response = Invoke-RestMethod -Uri $s -Method GET -UseBasicParsing - # UseBasicParsing disable DOM parsing for OSes without IE  # (New-Object System.Net.WebClient).DownloadString($s) # 
     if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach child sitemap: $sitemap." -ForegroundColor yellow; continue } else { Write-Host "Child sitemap reached: $s" -ForegroundColor Green }
 	[xml]$contentInXML = ($http_response.Content) 
-	if($debug -band 4) { Format-XML -InputObject $contentInXML }
+	if ($debug -band 4) { Format-XML -InputObject $contentInXML }
 	$links += $contentInXML.urlset.url.loc
 	$i++
 }
@@ -242,7 +243,7 @@ $hashtable0 = [ordered]@{}
 output_curls $hashtable0 $curls_dir $OS_WinNT
 
 # continue further only if user wants to
-if($mode_sitemap_links_only -eq 1) { pause; exit }
+if ($mode_sitemap_links_only -eq 1) { pause; exit }
 
 # build a hashtable of desired uri_sets 
 $uri_sets = [ordered]@{} # hashtable: [string]$tag => [array]$attributes. E.g. @{ 'a' = @('href');  'img' = @('src', 'data-src', 'srcset', 'data-srcset'); 'link' = @('href'); 'script' = @('src'); }
@@ -251,15 +252,15 @@ foreach ($combo in $tag_attribute_combos) {
    
     for($i=0; $i -lt $split.count; $i++) {
         # skip over odd numbers
-        if($i % 2) { continue } 
+        if ($i % 2) { continue } 
 
         $tag  = $split[$i]
         $attr = $split[$i+1]
 
         # skip over invalid tags / attributes (may contain letters and dashes only)
-        if($tag -match [regex]"^[A-Za-z\-]+" -eq $false -or $tag -match [regex]"^[A-Za-z\-]+" -eq $false) { continue }
+        if ($tag -match [regex]"^[A-Za-z\-]+" -eq $false -or $tag -match [regex]"^[A-Za-z\-]+" -eq $false) { continue }
 
-        if($uri_sets.Contains($tag) -eq $false) {
+        if ($uri_sets.Contains($tag) -eq $false) {
             # first tag of its kind found, add the combination
             $uri_sets.Add($tag, [array]$attr) # e.g. 'a' => @('href'), e.g. 'img' => @('src')
         }
@@ -267,7 +268,7 @@ foreach ($combo in $tag_attribute_combos) {
         {
             # append more attributes for an existing tag
             $attrs = $uri_sets.($tag) # retrieve the existing attributes
-            if($attrs.Contains($attr) -eq $false) {
+            if ($attrs.Contains($attr) -eq $false) {
                 $attrs += $attr    # add new attribute for this tag
                 $uri_sets.($tag) = $attrs #e.g. 'img' => @('src', 'srcset')
             }
@@ -301,10 +302,10 @@ Write-Host "`n`n[Scraping site's links to get desired uri sets ...]" -Foreground
 # create directory to store .html, if not existing
 if (!(Test-Path $html_dir)) {$null = New-Item -ItemType directory $html_dir; }  # Assigning it to $null removes the return value
 
-if($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_miliseconds = 0; }
+if ($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_miliseconds = 0; }
 # scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
 foreach ($l in $links_to_scrape) {
-  #$measure_get = Measure-Command {
+  $measure_get = Measure-Command {
   
 	$i++
 
@@ -336,14 +337,14 @@ foreach ($l in $links_to_scrape) {
 			}
 		}
 	}#>
-  #} ## end measure_get ##
+  } ## end measure_get ##
 
-  if($debug -band 1) {
+  if ($debug -band 1) {
     $measure_get_total_miliseconds += $measure_get.TotalMilliseconds
     Write-Host "`tgetting link $i took" $measure_get.Milliseconds "ms" -ForegroundColor DarkCyan
   }
 
-  #$measure_parse = Measure-Command {
+  $measure_parse = Measure-Command {
     # get raw html from file
     # edit 2017 March - no longer using offline html (works on *nix without IE's parsing)
     #$html = Get-Content "$html_dir/$i.html" -Raw -Encoding utf8
@@ -358,14 +359,14 @@ foreach ($l in $links_to_scrape) {
             get_uris $html $tag $attr $uri_set         # e.g. $uri_set = get_uris $html 'a' 'href' $uri_set_all 
             # declare new variable with value
             Set-Variable -Name "$($tag)_$($attr)_all" -Value $uri_set  # e.g. $a_href_all = $uri_set, e.g. $img_src_all = $uri_set
-            if($debug -band 2) { Write-Host "Tag: $tag $attr, in variable: $($tag)_$($attr)_all" -ForegroundColor Gray}
-          if($debug -band 1) { Write-Host "`t parse <$tag $attr> took" $measure_each_parse.Milliseconds "ms" -ForegroundColor DarkCyan }
+            if ($debug -band 2) { Write-Host "Tag: $tag $attr, in variable: $($tag)_$($attr)_all" -ForegroundColor Gray}
+          if ($debug -band 1) { Write-Host "`t parse <$tag $attr> took" $measure_each_parse.Milliseconds "ms" -ForegroundColor DarkCyan }
           } ## end measure_each_parse ##
         }
           
     }
-  #} ## end measure_parse ##
-  if($debug -band 1) {
+  } ## end measure_parse ##
+  if ($debug -band 1) {
     $measure_parse_total_miliseconds += $measure_parse.TotalMilliseconds
     Write-Host "`tparsing link $i took" $measure_parse.Milliseconds "ms" -ForegroundColor DarkCyan
   }
@@ -380,7 +381,7 @@ if ($debug -band 2) {
         $tag = $_.key
         $attrs = $_.value
         foreach ($attr in $attrs) {
-            if( (Get-Variable -Name "$($tag)_$($attr)_all" -ValueOnly) -eq $NULL) { 
+            if ( (Get-Variable -Name "$($tag)_$($attr)_all" -ValueOnly) -eq $NULL) { 
                 Write-Host "$($tag)_$($attr)_all set is empty" -ForegroundColor Gray  
             }
         }
@@ -397,7 +398,7 @@ $uri_sets.GetEnumerator() | % {
     $attrs = $_.value
     foreach ($attr in $attrs) {
         $uri_set = Get-Variable -Name "$($tag)_$($attr)_all" -ValueOnly 
-        if($uri_set.count -eq 0) { $null = $uri_set.Add('') } # if uri_set is null, give it an empty value anyway. Assigning it to $null removes arraylist's Add()'s return value.
+        if ($uri_set.count -eq 0) { }
         $uri_set_filename = "$($tag)_$($attr)" # e.g. a_href
         $hashtable1.Add($uri_set, $uri_set_filename);
     }  
@@ -446,7 +447,7 @@ Write-Host "`n> Successfully wrote curls commands for all uri sets." -Foreground
 # 0 - do not warm
 # 1 - warm all in a_href uri set (excluding previously scraped)
 # 2 - warm all uri sets
-if($mode_warm -eq 1) {
+if ($mode_warm -eq 1) {
 	# tell user we are going to warm only a_href uri set
 	Write-Host "`n`n[Warming only a_href uri set ...] " -ForegroundColor Cyan
 
@@ -458,12 +459,12 @@ if($mode_warm -eq 1) {
         #$res = Invoke-WebRequest -uri $uri -ErrorAction SilentlyContinue -ErrorVariable Err
         # [temp fix on next line]
         $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
-        if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
+        if ($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 	}
 
     # warm all a_hrefs that hasn't been scraped earlier
 	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
-}elseif($mode_warm -eq 2) {
+}elseif ($mode_warm -eq 2) {
 	# tell user we are going to warm all uri sets
 	Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
 
@@ -478,7 +479,7 @@ if($mode_warm -eq 1) {
             #$res = Invoke-WebRequest -uri $_ -ErrorAction SilentlyContinue -ErrorVariable Err
             # [temp fix on next line]
             $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
-            if($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
+            if ($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 		}
 	}
 	Write-Host "`n> Successfully warmed all uri sets" -ForegroundColor Green

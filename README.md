@@ -3,17 +3,18 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 
 ## Features:
 - Starting with a site's parent sitemap, scrape for child sitemaps and get all links
-- Output sitemaps and links as list and curls in individual files.
+- Output sitemaps and links as list and curls in individual files
 - Choice whether to scrape links for URIs found in <i>any tag-attribute combination</i> you want. E.g. <code>&lt;a href&gt;, &lt;img src&gt;, &lt;img srcset&gt;, &lt;img data-src&gt;, &lt;img data-srcset&gt;, &lt;link rel&gt;, &lt;script src&gt;</code>
-- URIs are domain-specific (i.e. same domain as the sitemaps and links).
+- URIs are domain-specific (i.e. same domain as the sitemaps and links)
 - Output each tag-attribute's URIs to files
 - Output each tag-attribute's URIs as curls to files
-- Choice whether to warm site with the above URIs as part of script.
+- Choice whether to warm site with the above URIs as part of script
 
 ## Requirements:
+- A sitemap formatted in the <a href="https://www.sitemaps.org/protocol.html" target="_blank">Sitemap protocol format</a>, populated with links
 - <a href="https://github.com/PowerShell/PowerShell#get-powershell" target="_blank">Powershell v3</a>
 - Windows / *nix environment
-- User with read/write/modify permissions on script directory.
+- User with read/write/modify permissions on script directory
 
 ## Installation/usage:
 - Open the <code>site-scraper-warmer.ps1</code> in your favourite text editor and configure the script settings at the top of the script (instructions are included).
@@ -45,7 +46,7 @@ Nil
 - By default, script directory (where you run the script) needs <b>read, execute, write permissions</b>. All created files/folders will reside in the script directory.
 
 ## Background: 								
-- Website owners may want warm their site (i.e. "preload the cache") from a remote client especially so if they use Content Delivery Networks (CDNs).
+- Website owners may want to warm their site (i.e. "preload the cache") from a remote client especially so if they use Content Delivery Networks (CDNs).
 - Search Engine Optimization (SEO) typically involves optimizing a website's load times, which can drastically decrease if the website has preloaded its cache. This script can be configured to do this automatically; alternatively site warming can be achieved through using the curls generated in separate files for portability.
 - Website owners might want a list of links of all their resources (blog posts, media, etc.) if they intend to migrate their site (e.g. changing a domain name).. This script can search for all of those and output them as a list.
 - Website owners may simply need a list of their sitemaps, or links from those sitemaps.

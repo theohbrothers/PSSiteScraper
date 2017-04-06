@@ -197,12 +197,11 @@ Catch { Write-Warning "Script directory has to be writeable to output links to f
 
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # get main sitemap as xml object
-$http_body = ''
-# Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
-$http_body = Invoke-WebRequest -Uri $sitemap -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
-#$http_body = Invoke-RestMethod -Uri $sitemap -Method GET
-if ($http_body -eq $NULL) { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
-[xml]$contentInXML = $http_body # (New-Object System.Net.WebClient).DownloadString($sitemap) 
+# Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
+# By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
+$http_response = Invoke-WebRequest -uri $sitemap -UseBasicParsing
+if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
+[xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) 
 if ($debug -band 4) { Format-XML -InputObject $contentInXML }
 
 # parse main sitemap to get sitemaps as xml objects
@@ -211,11 +210,12 @@ $sitemaps = $contentInXML.sitemapindex.sitemap.loc
 # get links in sitemaps
 $links = @()
 foreach ($s in $sitemaps) {
-    # Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
-    $http_response = Invoke-WebRequest -Uri $s -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+    # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
+    # By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
+	$http_response = Invoke-WebRequest -uri $s -UseBasicParsing
     # (New-Object System.Net.WebClient).DownloadString($s) # 
     if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach child sitemap: $sitemap." -ForegroundColor yellow; continue } else { Write-Host "Child sitemap reached: $s" -ForegroundColor Green }
-	[xml]$contentInXML = ($http_response.Content) 
+	[xml]$contentInXML = $http_response.Content
 	if ($debug -band 4) { Format-XML -InputObject $contentInXML }
 	$links += $contentInXML.urlset.url.loc
 	$i++

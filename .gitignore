@@ -1,9 +1,11 @@
-uri_sets
-*.txt
-curls
-*.bat
-.sh
+sitemaps
+links
 html
+uri_sets
+curls
+*.txt
+*.bat
+*.sh
 *.html
 *test*.ps1
 

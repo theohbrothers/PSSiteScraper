@@ -40,6 +40,11 @@ $curls_links_file = "links"
 # Default: 0
 $mode_sitemap_links_only = 0
 
+# whether to save each to-be-parsed HTML document as a .html file
+# 0 - do not save HTML
+# 1 - save HTML
+$mode_save_html = 2
+
 # whether to warm site with all retrieved uris
 # 0 - do not warm site
 # 1 - warm a_href uris only
@@ -112,15 +117,15 @@ function get_uris ([string]$html_str, [string]$tag, [string]$attr, [System.Colle
         # for each value, do
         $attr_vals | foreach {
             $uri_regex = "((?:https?:)?\/\/[^\s`'`"]+)"  # matches uris
-			$captures = [regex]::Match( $_, $uri_regex)
-			$val = $captures.Groups[0].Value
+            $captures = [regex]::Match( $_, $uri_regex)
+            $val = $captures.Groups[0].Value
 
             # filter uris we want
-			if (uri_is_valid ($val)) {
-				if (!$arraylist.Contains($val)) {
-					$null = $arraylist.Add($val) # assigning it to $null removes arraylist's Add()'s return value.
-				}
-			}
+            if (uri_is_valid ($val)) {
+	            if (!$arraylist.Contains($val)) {
+		            $null = $arraylist.Add($val) # assigning it to $null removes arraylist's Add()'s return value.
+	            }
+            }
         } 
     }
     #return $array
@@ -182,6 +187,7 @@ if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! shou
 
 # check modes and OS
 if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
+if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0))  { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 elseif (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
@@ -207,7 +213,7 @@ $links = @()
 foreach ($s in $sitemaps) {
     # Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
     $http_response = Invoke-WebRequest -Uri $s -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
-    #$http_response = Invoke-RestMethod -Uri $s -Method GET -UseBasicParsing - # UseBasicParsing disable DOM parsing for OSes without IE  # (New-Object System.Net.WebClient).DownloadString($s) # 
+    # (New-Object System.Net.WebClient).DownloadString($s) # 
     if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach child sitemap: $sitemap." -ForegroundColor yellow; continue } else { Write-Host "Child sitemap reached: $s" -ForegroundColor Green }
 	[xml]$contentInXML = ($http_response.Content) 
 	if ($debug -band 4) { Format-XML -InputObject $contentInXML }
@@ -306,13 +312,12 @@ if ($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_m
 # scrape links and parse .html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
 foreach ($l in $links_to_scrape) {
   $measure_get = Measure-Command {
-  
 	$i++
 
     # scrape, while warming the link
-    # Invoke-WebRequest might run <script> tags that trigger IE Enhanced Security Configuration errors resulting in powershell crashes.
-	$http_response = Invoke-WebRequest -uri $l -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
-    #$http_response = Invoke-RestMethod -uri $l -Method GET -UseBasicParsing # UseBasicParsing disable DOM parsing for OSes without IE
+    # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
+    # By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
+	$http_response = Invoke-WebRequest -uri $l -UseBasicParsing
 
     if ($http_response.StatusCode -ne 200)  { Write-Host "`n>Could not reach link: $l" -ForegroundColor yellow; continue } else { Write-Host "`n>Link $i reached: $l" -ForegroundColor Green }
     $html = $http_response.Content
@@ -322,20 +327,20 @@ foreach ($l in $links_to_scrape) {
 	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
     # edit 2017 March - not using DOM parsing anymore
 	<#$html.links | foreach {
-		$val = $_.href
-		if (uri_is_valid($val)) {
-			if (!$a_href_all.Contains($val)) {
-				$a_href_all += $val
-			}
-		}
-	}
+        $val = $_.href
+        if (uri_is_valid($val)) {
+             if (!$a_href_all.Contains($val)) {
+		        $a_href_all += $val
+             }
+        }
+    }
 	$html.Images | foreach {
-		$val = $_.src
-		if (uri_is_valid($val)) {
-			if (!$img_src_all.Contains($val)) {
-				$img_src_all += $val
-			}
-		}
+        $val = $_.src
+        if (uri_is_valid($val)) {
+            if (!$img_src_all.Contains($val)) {
+                $img_src_all += $val
+            }
+        }
 	}#>
   } ## end measure_get ##
 
@@ -366,6 +371,7 @@ foreach ($l in $links_to_scrape) {
           
     }
   } ## end measure_parse ##
+  
   if ($debug -band 1) {
     $measure_parse_total_miliseconds += $measure_parse.TotalMilliseconds
     Write-Host "`tparsing link $i took" $measure_parse.Milliseconds "ms" -ForegroundColor DarkCyan
@@ -458,29 +464,26 @@ if ($mode_warm -eq 1) {
         # [next line currently bugged. Can't warm images on *nix]
         #$res = Invoke-WebRequest -uri $uri -ErrorAction SilentlyContinue -ErrorVariable Err
         # [temp fix on next line]
-        $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
-        if ($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
+        $res = Invoke-WebRequest $uri -UseBasicParsing
+        if ($res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
 	}
 
     # warm all a_hrefs that hasn't been scraped earlier
 	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
 }elseif ($mode_warm -eq 2) {
-	# tell user we are going to warm all uri sets
-	Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
-
-	$hashtable1.GetEnumerator() | % { 
-		$uri_set = $_.key
-		$uri_set_file = $_.value
-		Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
-		$uri_set | foreach {
+    # tell user we are going to warm all uri sets
+    Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
+    
+    $hashtable1.GetEnumerator() | % { 
+        $uri_set = $_.key
+        $uri_set_file = $_.value
+        Write-Host "> Warming $uri_set_file uri set ... " -ForegroundColor Green
+        $uri_set | foreach {
             Write-Host " Warming $uri"
             $res = ''
-            # [next line currently bugged. Can't warm images on *nix]
-            #$res = Invoke-WebRequest -uri $_ -ErrorAction SilentlyContinue -ErrorVariable Err
-            # [temp fix on next line]
-            $res = curl $uri -UseBasicParsing # curl is an alias to Invoke-WebRequest on winNT, but runs actual curl binary on *nix
-            if ($OS_WinNT -eq 1 -and $res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
-		}
-	}
+            $res = Invoke-WebRequest $uri -UseBasicParsing
+            if ($res.StatusCode -ne '200') { Write-Host "Could not reach $uri" -ForegroundColor yellow; }
+         }
+    }
 	Write-Host "`n> Successfully warmed all uri sets" -ForegroundColor Green
 }else {}

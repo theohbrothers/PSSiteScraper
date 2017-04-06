@@ -40,7 +40,7 @@ Q: Help! I am getting a Internet Explorer popup warning that <code>'Content with
 Nil
 
 ## Known issues
-- If Internet Explorer Enhanced Security Configuration (ESC) is enabled, popups will block the execution of the script if Powershell UI is open, or else the script will hang. The only way around this is to turn off IE ESC.
+Nil
 
 ## NOTE:
 - By default, script directory (where you run the script) needs <b>read, execute, write permissions</b>. All created files/folders will reside in the script directory.

@@ -43,7 +43,7 @@ $mode_sitemap_links_only = 0
 # whether to save each to-be-parsed HTML document as a .html file
 # 0 - do not save HTML
 # 1 - save HTML
-$mode_save_html = 2
+$mode_save_html = 0
 
 # whether to warm site with all retrieved uris
 # 0 - do not warm site
@@ -187,8 +187,8 @@ if ($domain -match '^[A-z\-\.]+$' -eq $false) { Write-Host 'Invalid domain! shou
 
 # check modes and OS
 if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0))  { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-elseif (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
+if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
+if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
@@ -322,7 +322,7 @@ foreach ($l in $links_to_scrape) {
     if ($http_response.StatusCode -ne 200)  { Write-Host "`n>Could not reach link: $l" -ForegroundColor yellow; continue } else { Write-Host "`n>Link $i reached: $l" -ForegroundColor Green }
     $html = $http_response.Content
 	# output html to file
-	$html | Out-File "$html_dir/$i.html" -Encoding utf8 
+	if ($mode_save_html) { $html | Out-File "$html_dir/$i.html" -Encoding utf8 }
 
 	# parse html to get uri sets: <a href>, <img src>, <img srcset>, <link href>, <script src>
     # edit 2017 March - not using DOM parsing anymore

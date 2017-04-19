@@ -77,7 +77,7 @@ $progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-We
 ############################################################# 
 
 # includes
-. ./functions.ps1
+. .\functions.ps1
 
 # Get script directory, set as cd
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
@@ -98,7 +98,7 @@ if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
-Try { [io.file]::OpenWrite('test').close(); Remove-Item 'test'}
+Try { [io.file]::OpenWrite('test').close(); If (Test-Path 'test') { Remove-Item 'test' } }
 Catch { Write-Warning "Script directory has to be writeable to output to files!" }
 
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan

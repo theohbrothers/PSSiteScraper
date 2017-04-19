@@ -77,7 +77,7 @@ $progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-We
 ############################################################# 
 
 # includes
-. ./functions.ps1
+. .\functions.ps1
 
 # Get script directory, set as cd
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
@@ -98,7 +98,7 @@ if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
 
 # check for write permissions in script directory
-Try { [io.file]::OpenWrite('test').close(); Remove-Item 'test'}
+Try { [io.file]::OpenWrite('test').close(); If (Test-Path 'test') { Remove-Item 'test' } }
 Catch { Write-Warning "Script directory has to be writeable to output to files!" }
 
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
@@ -106,7 +106,7 @@ Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
 # By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
 $http_response = Invoke-WebRequest -uri $sitemap -UseBasicParsing
-if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach main sitemap: $sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
+if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach main sitemap: $sitemap" -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
 [xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) 
 if ($debug -band 4) { Format-XML -InputObject $contentInXML }
 

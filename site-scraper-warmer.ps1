@@ -76,14 +76,14 @@ $debug = 0
 $progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-WebRequest
 ############################################################# 
 
-# includes
-. .\functions.ps1
-
 # Get script directory, set as cd
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 #Set-Location $scriptDir
 cd $scriptDir
 Write-Host "Script directory: $scriptDir" -ForegroundColor Green
+
+# includes
+. .\functions.ps1
 
 # check if desired protocol is valid
 if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; pause; exit }

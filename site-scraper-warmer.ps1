@@ -8,17 +8,17 @@ Write-Host "Script directory: $scriptDir" -ForegroundColor Green
 . .\functions.ps1
 
 # Check if desired protocol is valid 
-if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; pause; exit }
+if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; exit }
 
 # Check if domain is valid
-if ($domain -match '^[A-z0-9\-\.]+$' -eq $false) { Write-Host 'Invalid domain! should only contain letters, numbers, -, and .' ; pause; exit }
+if ($domain -match '^[A-z0-9\-\.]+$' -eq $false) { Write-Host 'Invalid domain! should only contain letters, numbers, -, and .' ; exit }
 
 # Check modes and OS
-if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-if (($mode_output_force_protocol -gt 1) -or ($mode_output_force_protocol -lt 0)) { Write-Host "Invalid `$mode_output_force_protocol! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
-if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	pause; exit}
-if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; pause; exit}
+if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
+if (($mode_output_force_protocol -gt 1) -or ($mode_output_force_protocol -lt 0)) { Write-Host "Invalid `$mode_output_force_protocol! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
+if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
+if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	exit }
+if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
 
 # Check for write permissions in script directory
 Try { [io.file]::OpenWrite('.test').close(); If (Test-Path '.test') { Remove-Item '.test' -ErrorAction Stop } }
@@ -33,13 +33,14 @@ $http_response = ''
 Try {
     $http_response = Invoke-WebRequest -uri $sitemap -UseBasicParsing
     $res_code = $http_response.StatusCode
-}Catch { 
+}Catch {
     # Catch 50x exceptions 
     $res_code = $_.Exception.Response.StatusCode.Value__
-}
-if ($res_code -ne 200) { Write-Host "Could not reach main sitemap: $sitemap. Error code: $res_code. Ensure your config file points to a valid and existing sitemap." -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
+    if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
+}   
+if ($res_code -ne 200) { Write-Host "Could not reach main sitemap: $sitemap. Error code: $res_code. Ensure your config file points to a valid and existing sitemap." -ForegroundColor yellow; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
 $contentInXML = $http_response.Content -as [xml] 
-if ($contentInXML -eq $null) { Write-Host "Cannot continue. Either the returned resource is an invalid sitemap (i.e. improperly formatted), or not a sitemap. In the latter case, ensure you modify the script config file to use the correct sitemap location." -ForegroundColor Yellow; pause; exit} 
+if ($contentInXML -eq $null) { Write-Host "Cannot continue. Either the returned resource is an invalid sitemap (i.e. improperly formatted), or not a sitemap. In the latter case, ensure you modify the script config file to use the correct sitemap location." -ForegroundColor Yellow; exit } 
 if ($debug -band 4) { $contentInXML | Format-XML | Out-String | % { Write-Host $_.Trim() } }
 
 # Populate our sitemaps collection
@@ -66,6 +67,7 @@ foreach ($s in $sitemaps) {
         }Catch { 
             # Catch 50x exceptions 
             $res_code = $_.Exception.Response.StatusCode.Value__ 
+            if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
         }
         if ($res_code -ne 200) { 
             Write-Host "Could not reach sitemap: $sitemap. Error code: $res_code" -ForegroundColor yellow; continue 
@@ -111,7 +113,7 @@ $mapping_sitemaps_links_sets_to_names = [ordered]@{  $sitemaps_file = $sitemaps
 output_curls $mapping_sitemaps_links_sets_to_names $curls_dir $OS_WinNT
 
 # Continue further only if user wants to
-if ($mode_sitemap_links_only -eq 1) { pause; exit }
+if ($mode_sitemap_links_only -eq 1) { exit }
 
 # Build a hashtable of desired uri sets 
 $desired_uri_sets = get_desired_uri_sets $tag_attribute_combos
@@ -155,8 +157,9 @@ foreach ($l in $links) {
             $html = $http_response.Content
             $res_code = $http_response.StatusCode
         }Catch { 
-             # Catch 50x exceptions 
+            # Catch 50x exceptions 
             $res_code = $_.Exception.Response.StatusCode.Value__
+            if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
         }
         
         if ($res_code -ne 200) { 

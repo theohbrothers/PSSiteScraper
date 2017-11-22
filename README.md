@@ -17,13 +17,13 @@ This Powershell script has the ability to retrieve and output all of a site's UR
 - User with read/write/modify permissions on script directory
 
 ## Installation/usage:
-- Open the <code>site-scraper-warmer.ps1</code> in your favourite text editor and configure the script settings at the top of the script (instructions are included).
+- Open the <code>config.ps1</code> in your favourite text editor and configure scripts settings
 - WinNT:
   - Right click on the script in explorer and select <code>Run with Powershell</code>. (should be present on Windows 7 and up)
   - Alternatively, open command prompt in the script directory, and run <code>Powershell .\site-scraper-warmer.ps1</code>
 - *nix:
-  - Run <code>powershell ./site-scraper-warmer.ps1</code>
-  
+  - Run <code>powershell ./site-scraper-warmer.ps1</code> or <code>pwsh ./site-scraper-warmer.ps1</code> depending on which version of powershell you're running.
+  
 ## FAQ 
 
 ### WinNT

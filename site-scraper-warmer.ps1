@@ -1,102 +1,13 @@
-<<<<<<< HEAD
-﻿# Get script directory, set as cd
-=======
-﻿############### configure script settings ##########
-# protocol
-# Use either https:// or http://
-# Default: https://
-$desired_protocol = "https://"
-
-# domain (may be a subdomain or subsubdomain)
-# domain should only contain letters, numbers, -, and . 
-# NOTE: do not include trailing slash
-$domain = "theohbrothers.com"
-
-# sitemap file name
-# NOTE: do not include preceding slash.
-$main_sitemap_uri = "sitemap.xml"
-
-# fully generated sitemap uri
-# NOTE: unless you know what you're doing, leave this as default
-# Default: "$desired_protocol$domain/$main_sitemap_uri"
-$sitemap = "$desired_protocol$domain/$main_sitemap_uri"
-
-# tag-attribute combinations where uris should be searched (Comma-delimited, order doesn't matter)
-# NOTE: best left in their default values.
-# NOTE: if you would like to add another combination, append it to the string (ensure you add a comma before each entry)
-$tag_attribute_combos = "a href, img src, img data-src, img srcset, img data-srcset, link href, script src, img data-noscript, ...custom "
-
-# data files and directories
-# NOTE: best left in their default values.
-$sitemaps_dir = "sitemaps"
-$sitemaps_file = "sitemaps"
-$links_dir = "links"
-$links_file = "links"
-$sitemaps_links_file_extension = ".txt"
-$html_dir = "html"
-$uri_sets_dir = "uri_sets"
-$uri_sets_file_extension = ".txt"
-$curls_dir = "curls"
-
-# whether the script should stop at just retreiving sitemaps links, or continue to get all uris from all those links
-# 0 - retrieve links and continue to get all their uris
-# 1 - retrieve links only
-# Default: 0
-$mode_sitemap_links_only = 0
-
-# whether to save each to-be-parsed HTML document as a .html file
-# 0 - do not save HTML
-# 1 - save HTML
-# Default: 0
-$mode_save_html = 0
-
-# whether to warm site with all retrieved uris
-# 0 - do not warm site
-# 1 - warm a_href uris only
-# 2 - warm all uris (a_href, img_src, img_srcset, link_href, script_src)
-# Default: 0
-$mode_warm = 0
-
-# the OS for manually executable generated curls scripts 
-# 0 - *nix  -- curls generated as shell (.sh) scripts
-# 1 - WinNT -- curls generated as batch (.bat) scripts
-# Default: 0
-$OS_WinNT = 0
-
-# debug mode
-# 0 - turn off debugging.
-# >=1, values are additive. Enter then sum of the values corresponding to the outputs you want:
-#   1 - Performance metrics
-#   2 - Operations (General)
-#   4 - Operations (Verbose)
-# Default: 0
-$debug = 0
-
-# suppress errors / progress
-# NOTE: do not edit
-# Default: 'silentlycontinue'
-#$ErrorActionPreference = 'silentlycontinue'
-$progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-WebRequest
-############################################################# 
-
 # Get script directory, set as cd
->>>>>>> master
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 Set-Location $scriptDir
 Write-Host "Script directory: $scriptDir" -ForegroundColor Green
 
-<<<<<<< HEAD
 # Includes
 . .\config.ps1
 . .\functions.ps1
 
 # Check if desired protocol is valid 
-=======
-# includes
-. .\functions.ps1
-
-# check if desired protocol is valid
->>>>>>> master
 if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; pause; exit }
 
 # Check if domain is valid
@@ -116,7 +27,6 @@ Catch { Write-Warning "Script directory has to be writeable to output to files!"
 # Get main sitemap as xml object
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
-<<<<<<< HEAD
 # By using -UseBasicParsing, we skip IE's DOM parsing. No IE ESC errors are triggered
 # (New-Object System.Net.WebClient).DownloadString($sitemap) 
 $http_response = ''
@@ -142,16 +52,6 @@ $contentInXML.sitemapindex.sitemap.loc | foreach {
 }
 # Sort sitemaps alphabetically
 $sitemaps = $sitemaps | Sort-Object
-=======
-# By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
-$http_response = Invoke-WebRequest -uri $sitemap -UseBasicParsing
-if ($http_response.StatusCode -ne 200) { Write-Host "Could not reach main sitemap: $sitemap" -ForegroundColor yellow; pause; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
-[xml]$contentInXML = $http_response.Content # (New-Object System.Net.WebClient).DownloadString($sitemap) 
-if ($debug -band 4) { Format-XML -InputObject $contentInXML }
-
-# parse main sitemap to get sitemaps as xml objects
-$sitemaps = $contentInXML.sitemapindex.sitemap.loc
->>>>>>> master
 
 if ($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_miliseconds = 0; }
 

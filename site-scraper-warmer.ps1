@@ -17,12 +17,12 @@ if ($domain -match '^[A-z0-9\-\.]+$' -eq $false) { Write-Error 'Invalid domain! 
 if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Error "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1."; exit }
 if (($mode_output_force_protocol -gt 1) -or ($mode_output_force_protocol -lt 0)) { Write-Error "Invalid `$mode_output_force_protocol! Use integer values from 0 to 1."; exit }
 if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Error "Invalid `$mode_save_html! Use integer values from 0 to 1."; exit }
-if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Error "Invalid `$mode_warm! Use integer values from 0 to 2.";	exit }
+if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Error "Invalid `$mode_warm! Use integer values from 0 to 2."; exit }
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Error "Invalid `$OS_WinNT! Use integer values from 0 to 1."; exit }
 
 # Check for write permissions in script directory
 Try { New-Item '_test' | Out-Null; If (Test-Path '_test') { Remove-Item '_test' } }
-Catch { Write-Error "Script directory has to be writeable to output to files!"; }
+Catch { Write-Error "Script directory has to be writeable to output to files!"; exit;}
 
 # Get main sitemap as xml object
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan

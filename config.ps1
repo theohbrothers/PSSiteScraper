@@ -52,19 +52,13 @@ $mode_sitemap_links_only = 0
 # Default: 0
 $mode_output_force_protocol = 0
 
-# 0 - do not warm site
-# 1 - warm a_href uris only
-# 2 - warm all uris (a_href, img_src, img_srcset, link_href, script_src)
-# Default: 0
-$mode_warm = 0
-
 # Whether to save each to-be-parsed HTML document as a .html file
 # 0 - do not save HTML
 # 1 - save HTML
 # Default: 0
 $mode_save_html = 0
 
-# Whether to warm site with all retrieved uris
+# Whether to warm site with all retrieved uris, as part of the script
 # 0 - do not warm site
 # 1 - warm a_href uris only
 # 2 - warm all uris (a_href, img_src, img_srcset, link_href, script_src)
@@ -95,6 +89,6 @@ $progressPreference = 'silentlyContinue'  # Hides download progress of Invoke-We
 # Enforce TLS1.2 throughout script
 # Comment out - enable Powershell to self-select its TLS protocol (1.0-1.2).
 # Uncomment - force TLS1.2. Best practice, and future-proof. 
-# Default: [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# Default: #[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+#[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 ############################################################# 

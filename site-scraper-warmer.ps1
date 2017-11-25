@@ -39,8 +39,7 @@ Try {
     
     # Write non-http errors
     if (!$res_code) { Write-Error $_.Exception.Message }
-}   
-
+}
 if ($res_code -and $res_code -eq 200) { 
     # Sitemap not reachable. Exit
     Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green 

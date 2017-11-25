@@ -47,6 +47,6 @@ Nil
 
 ## Background: 								
 - Website owners may want to warm their site (i.e. "preload the cache") from a remote client especially so if they use Content Delivery Networks (CDNs).
-- Search Engine Optimization (SEO) typically involves optimizing a website's load times, which can drastically decrease if the website has preloaded its cache. This script can be configured to do this automatically; alternatively site warming can be achieved through using the curls generated in separate files for portability.
-- Website owners might want a list of links of all their resources (blog posts, media, etc.) if they intend to migrate their site (e.g. changing a domain name).. This script can search for all of those and output them as a list.
+- Search Engine Optimization (SEO) typically involves optimizing a website's load times, and one of the most effective means of doing so is to preload or 'warm' the web cache. This script can be configured to do this automatically; alternatively site warming can be achieved through using the curls generated in separate files for portability.
+- Website owners might want a list of links of all their resources (blog posts, media, etc.) if they intend to migrate their site (e.g. changing a domain name). This script can search for all of those and output them as a list.
 - Website owners may simply need a list of their sitemaps, or links from those sitemaps.

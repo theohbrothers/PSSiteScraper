@@ -8,39 +8,51 @@ Write-Host "Script directory: $scriptDir" -ForegroundColor Green
 . .\functions.ps1
 
 # Check if desired protocol is valid 
-if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Host "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; exit }
+if ($desired_protocol -match '^https?:\/\/$' -eq $false) { Write-Error "Invalid protocol! Use either of the following:`n`thttps://`n`thttp://"; exit }
 
 # Check if domain is valid
-if ($domain -match '^[A-z0-9\-\.]+$' -eq $false) { Write-Host 'Invalid domain! should only contain letters, numbers, -, and .' ; exit }
+if ($domain -match '^[A-z0-9\-\.]+$' -eq $false) { Write-Error 'Invalid domain! should only contain letters, numbers, -, and .' ; exit }
 
 # Check modes and OS
-if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Host "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
-if (($mode_output_force_protocol -gt 1) -or ($mode_output_force_protocol -lt 0)) { Write-Host "Invalid `$mode_output_force_protocol! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
-if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Host "Invalid `$mode_save_html! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
-if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Host "Invalid `$mode_warm! Use integer values from 0 to 2." -ForegroundColor Yellow;	exit }
-if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Host "Invalid `$OS_WinNT! Use integer values from 0 to 1." -ForegroundColor Yellow; exit }
+if (($mode_sitemap_links_only -gt 1) -or ($mode_sitemap_links_only -lt 0)) { Write-Error "Invalid `$mode_sitemap_links_only! Use integer values from 0 to 1."; exit }
+if (($mode_output_force_protocol -gt 1) -or ($mode_output_force_protocol -lt 0)) { Write-Error "Invalid `$mode_output_force_protocol! Use integer values from 0 to 1."; exit }
+if (($mode_save_html -gt 1) -or ($mode_save_html  -lt 0)) { Write-Error "Invalid `$mode_save_html! Use integer values from 0 to 1."; exit }
+if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Error "Invalid `$mode_warm! Use integer values from 0 to 2.";	exit }
+if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Error "Invalid `$OS_WinNT! Use integer values from 0 to 1."; exit }
 
 # Check for write permissions in script directory
-Try { [io.file]::OpenWrite('.test').close(); If (Test-Path '.test') { Remove-Item '.test' -ErrorAction Stop } }
-Catch { Write-Warning "Script directory has to be writeable to output to files!" }
+Try { New-Item '.test' | Out-Null; If (Test-Path '.test') { Remove-Item '.test' } }
+Catch { Write-Warning "Script directory has to be writeable to output to files!"; }
 
 # Get main sitemap as xml object
 Write-Host "`n`n[Scraping sitemap(s) for links ...]" -ForegroundColor Cyan
 # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
 # By using -UseBasicParsing, we skip IE's DOM parsing. No IE ESC errors are triggered
 # (New-Object System.Net.WebClient).DownloadString($sitemap) 
-$http_response = ''
 Try {
-    $http_response = Invoke-WebRequest -uri $sitemap -UseBasicParsing
-    $res_code = $http_response.StatusCode
+    $res = ''
+    $res = Invoke-WebRequest -uri $sitemap -UseBasicParsing
+    $res_code = $res.StatusCode
 }Catch {
     # Catch 50x exceptions 
     $res_code = $_.Exception.Response.StatusCode.Value__
-    if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
-}   
-if ($res_code -ne 200) { Write-Host "Could not reach main sitemap: $sitemap. Error code: $res_code. Ensure your config file points to a valid and existing sitemap." -ForegroundColor yellow; exit } else { Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green }
-$contentInXML = $http_response.Content -as [xml] 
-if ($contentInXML -eq $null) { Write-Host "Cannot continue. Either the returned resource is an invalid sitemap (i.e. improperly formatted), or not a sitemap. In the latter case, ensure you modify the script config file to use the correct sitemap location." -ForegroundColor Yellow; exit } 
+    
+    # Write non-http errors
+    if (!$res_code) { Write-Error $_.Exception.Message }
+}
+if ($res_code -and $res_code -eq 200) { 
+    # Sitemap not reachable. Exit
+    Write-Host "Main sitemap reached: $sitemap" -ForegroundColor Green 
+} else { 
+    Write-Error "Could not reach main sitemap: $sitemap. Error code: $res_code. Ensure your config file points to a valid and existing sitemap."
+    exit 
+}
+$contentInXML = $res.Content -as [xml] 
+if ($contentInXML -eq $Null) { 
+    # Returned resource not parsable as xml. Exit
+    Write-Error "Cannot continue. Either the returned resource is an invalid sitemap (i.e. improperly formatted), or not a sitemap. In the latter case, ensure you modify the script config file to use the correct sitemap location."; 
+    exit 
+} 
 if ($debug -band 4) { $contentInXML | Format-XML | Out-String | % { Write-Host $_.Trim() } }
 
 # Populate our sitemaps collection
@@ -49,6 +61,7 @@ $sitemaps = New-Object System.Collections.ArrayList
 $sitemaps.Add($sitemap) | Out-Null
 # Add our child sitemaps
 $contentInXML.sitemapindex.sitemap.loc | foreach {
+    # Add only non-empty links
     $sitemaps.Add($_) | Out-Null
 }
 # Sort sitemaps alphabetically
@@ -60,26 +73,33 @@ if ($debug -band 1) { $measure_get_total_miliseconds = 0; $measure_parse_total_m
 $links = New-Object System.Collections.ArrayList
 foreach ($s in $sitemaps) {
     $measure_get = Measure-Command {
-        $http_response = ''
         Try {
-            $http_response = Invoke-WebRequest -uri $s -UseBasicParsing
-            $res_code = $http_response.StatusCode
+            $res = ''
+            $res = Invoke-WebRequest -uri $s -UseBasicParsing
+            $res_code = $res.StatusCode
         }Catch { 
             # Catch 50x exceptions 
-            $res_code = $_.Exception.Response.StatusCode.Value__ 
-            if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
+            $res_code = $_.Exception.Response.StatusCode.Value__
+            
+            # Write non-http errors
+            if (!$res_code) { Write-Error $_.Exception.Message }
         }
-        if ($res_code -ne 200) { 
-            Write-Host "Could not reach sitemap: $sitemap. Error code: $res_code" -ForegroundColor yellow; continue 
-        }else { 
+        if ($res_code -and $res_code -eq 200) { 
             Write-Host "Sitemap reached: $s" -ForegroundColor Green 
-            $contentInXML = $http_response.Content -as [xml]
+            $contentInXML = $res.Content -as [xml]
+            if ($contentInXML -eq $Null) { 
+                 # Returned resource not parsable as xml. Skip over it.
+                 Write-Error "Skipping over an invalid sitemap: $s. Either the returned resource is an invalid sitemap (i.e. improperly formatted), or not a sitemap."
+                 continue
+            }
             if ($debug -band 4) { $contentInXML | Format-XML | Out-String | % { Write-Host $_.Trim() } }
             $contentInXML.urlset.url.loc | ? { $_ } | foreach {
+                # Add only non-empty links
                 $links.Add($_)
             }
+        }else { 
+            Write-Error "Could not reach sitemap: $s. Error code: $res_code" -ForegroundColor yellow; continue 
         }
-
     }
     if ($debug -band 1) {
         $measure_get_total_miliseconds += $measure_get.TotalMilliseconds
@@ -105,11 +125,11 @@ Write-Host "> $($links.count) links in $links_dir/$links_file$sitemaps_links_fil
 Write-Host "`n`n[Writing curls for sitemaps and links...]" -ForegroundColor Cyan
 
 # Map sitemaps/links sets to names
+# Note: when using constructor, Hashtable will NULL if any key is empty. Using .Add() will not add a key-value pair if the key is empty.
 $mapping_sitemaps_links_sets_to_names = [ordered]@{  $sitemaps_file = $sitemaps 
                                                      $links_file = $links  }
 
 # Output sitemaps/links as curls
-# edit: Note: when using constructor, Hashtable will NULL if any key is empty. Using .Add() will not add a key-value pair if the key is empty.
 output_curls $mapping_sitemaps_links_sets_to_names $curls_dir $OS_WinNT
 
 # Continue further only if user wants to
@@ -148,29 +168,32 @@ foreach ($l in $links) {
         $i++
        
         $res_code = 0
-        $http_response = ''
+        $html = ''
         Try {
             # Scrape, while warming the link
             # Invoke-WebRequest without using -UseBasicParsing parameter might run <script> tags that trigger IE Enhanced Security Configuration (IE ESC) errors resulting in powershell crashes.
             # By using -UseBasicParsing, we skip DOM parsing with IE, no IE ESC errors are triggered
-            $http_response = Invoke-WebRequest -uri $l -UseBasicParsing
-            $html = $http_response.Content
-            $res_code = $http_response.StatusCode
+            $res = ''
+            $res = Invoke-WebRequest -uri $l -UseBasicParsing
+            $res_code = $res.StatusCode
+            $html = $res.Content
         }Catch { 
             # Catch 50x exceptions 
             $res_code = $_.Exception.Response.StatusCode.Value__
-            if ($_.ErrorDetails) { Write-Warning $_.ErrorDetails.Message }
-        }
-        
-        if ($res_code -ne 200) { 
-            Write-Host "`n>Could not reach link: $l. Error code: $res_code" -ForegroundColor yellow; continue
-        }else {
-            Write-Host "`n>Link $i reached: $l" -ForegroundColor Green
 
+            # Write non-http errors
+            if (!$res_code) { Write-Error $_.Exception.Message }
+        }
+        if ($res_code -and $res_code -eq 200) { 
+            Write-Host "`n>Link $i reached: $l" -ForegroundColor Green
+            
             # Output HTML to .html
             if ($mode_save_html -eq 1) {
                 $html | Out-File "$html_dir/$i.html" -Encoding utf8
             }
+        }else {
+            Write-Error "`n>Could not reach link: $l. Error code: $res_code";
+            continue
         }
     } ## End measure_get ##
 
@@ -272,23 +295,31 @@ if ($mode_warm -eq 1) {
 
 	Compare-Object $mapping_uri_sets_to_names.('a_href') $links | where {$_.sideindicator -eq "<="} | foreach {
         $uri = $_.InputObject
+
+        # Tell user we're warming this uri
         Write-Host " Warming $uri"
-        $res = Invoke-WebRequest $uri -UseBasicParsing
+       
+        $res_code = 0
         Try {
             $res = ''
-            # [next line currently bugged. Can't warm images on *nix]
-            #$res = Invoke-WebRequest -uri $uri -ErrorAction SilentlyContinue -ErrorVariable Err
-            # [temp fix on next line]
-            $res = Invoke-WebRequest $_ -UseBasicParsing
-            if ($res.StatusCode -ne '200') { Write-Host "Could not reach and warm uri: $_. Error code: $($res.StatusCode)" -ForegroundColor yellow; }
+            $res = Invoke-WebRequest $uri -UseBasicParsing
+            $res_code = $res.StatusCode
         }Catch {
+            # Catch 50x exceptions
             $res_code = $_.Exception.Response.StatusCode.Value__
-            Write-Host "Could not reach and warm uri: $_. Error code: $res_code" -ForegroundColor yellow;
+
+            # Write non-http errors
+            if (!$res_code) { Write-Error $_.Exception.Message }
         } 
+        if ($res_code -and $res_code -eq 200) { 
+            Write-Host " Successfully warmed." 
+        }else  {
+            Write-Error " Could not reach and warm uri: $uri. Error code: $res_code"; 
+        }
 	}
 
     # Warm all a_hrefs that hasn't been scraped earlier
-	Write-Host "> Successfully warmed all a_href uris" -ForegroundColor Green
+	Write-Host "Successfully warmed all a_href uris" -ForegroundColor Green
 }elseif ($mode_warm -eq 2) {
     # Tell user we are going to warm all uri sets
     Write-Host "`n`n[Warming all uri sets ...] " -ForegroundColor Cyan
@@ -296,17 +327,31 @@ if ($mode_warm -eq 1) {
     $mapping_uri_sets_to_names.GetEnumerator() | % { 
         $uri_set_name = $_.Key
         $uri_set = $_.Value
-        Write-Host "> Warming $uri_set_name uri set ... " -ForegroundColor Green
-        $uri_set | foreach {
-            Write-Host " Warming $_"
+
+        # Tell user we are going to warm this uri set
+        Write-Host " Warming $uri_set_name uri set ... " -ForegroundColor Green
+        
+        foreach ($uri in $uri_set) {
+            # Tell user we're warming this uri
+            Write-Host "  Warming $uri"
+           
+            $res_code = 0
             Try {
                 $res = ''
-                $res = Invoke-WebRequest $_ -UseBasicParsing
-                if ($res.StatusCode -ne '200') { Write-Host "Could not reach and warm uri: $_. Error code: $($res.StatusCode)" -ForegroundColor yellow; }
+                $res = Invoke-WebRequest $uri -UseBasicParsing
+                $res_code = $res.StatusCode
             }Catch {
+                # Catch 50x exceptions
                 $res_code = $_.Exception.Response.StatusCode.Value__
-                Write-Host "Could not reach and warm uri: $_. Error code: $res_code" -ForegroundColor yellow;
+
+                # Write non-http errors
+                if (!$res_code) { Write-Error $_.Exception.Message }
             } 
+            if ($res_code -and $res_code -eq 200) { 
+                Write-Host "  Successfully warmed." 
+            }else  {
+                Write-Error " Could not reach and warm uri: $uri. Error code: $res_code" 
+            }
          }
     }
 	Write-Host "`n> Successfully warmed all uri sets" -ForegroundColor Green

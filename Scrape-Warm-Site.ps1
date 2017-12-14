@@ -21,7 +21,7 @@ if (($mode_warm -gt 2) -or ($mode_warm -lt 0)) { Write-Error "Invalid `$mode_war
 if (($OS_WinNT -gt 1) -or ($OS_WinNT -lt 0)) { Write-Error "Invalid `$OS_WinNT! Use integer values from 0 to 1."; exit }
 
 # Check for write permissions in script directory
-Try { New-Item '_test' | Out-Null; If (Test-Path '_test') { Remove-Item '_test' } }
+Try { New-Item '_test' -ErrorAction Stop | Out-Null; If (Test-Path '_test') { Remove-Item '_test' -ErrorAction Stop } }
 Catch { Write-Error "Script directory has to be writeable to output to files!"; exit;}
 
 # Get main sitemap as xml object

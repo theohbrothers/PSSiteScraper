@@ -1,11 +1,2 @@
-sitemaps
-links
-html
-uri_sets
-curls
-*.txt
-*.bat
-*.sh
-*.html
-*test*.ps1
-
+/.*
+!/.gitignore

@@ -1,5 +1,9 @@
 # PSSiteScraper
 
+[![github-actions](https://github.com/theohbrothers/PSSiteScraper/workflows/ci-master-pr/badge.svg)](https://github.com/theohbrothers/PSSiteScraper/actions)
+[![github-release](https://img.shields.io/github/v/release/theohbrothers/PSSiteScraper?style=flat-square)](https://github.com/theohbrothers/PSSiteScraper/releases/)
+[![powershell-gallery-release](https://img.shields.io/powershellgallery/v/PSSiteScraper?logo=powershell&logoColor=white&label=PSGallery&labelColor=&style=flat-square)](https://www.powershellgallery.com/packages/PSSiteScraper/)
+
 Cmdlets for scraping a site.
 
 ## Agenda

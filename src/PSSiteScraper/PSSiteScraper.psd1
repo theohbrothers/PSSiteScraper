@@ -98,10 +98,10 @@ PrivateData = @{
         Tags = 'html','powershell','pwsh','scrape','site','sitemap','uri-scheme','uri','url','website'
 
         # A URL to the license for this module.
-        LicenseUri = 'https://raw.githubusercontent.com/theohbrothersPSSiteScraper/master/LICENSE'
+        LicenseUri = 'https://raw.githubusercontent.com/theohbrothers/PSSiteScraper/master/LICENSE'
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/theohbrothersPSSiteScraper'
+        ProjectUri = 'https://github.com/theohbrothers/PSSiteScraper'
 
         # A URL to an icon representing this module.
         # IconUri = ''

@@ -45,8 +45,8 @@
                 'url'
                 'website'
             )
-            LicenseUri = 'https://raw.githubusercontent.com/theohbrothersPSSiteScraper/master/LICENSE'
-            ProjectUri = 'https://github.com/theohbrothersPSSiteScraper'
+            LicenseUri = 'https://raw.githubusercontent.com/theohbrothers/PSSiteScraper/master/LICENSE'
+            ProjectUri = 'https://github.com/theohbrothers/PSSiteScraper'
             # IconUri = ''
             # ReleaseNotes = ''
             # Prerelease = ''

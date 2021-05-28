@@ -8,6 +8,16 @@ Cmdlets for scraping a site.
 - Get a site's published URLs from sitemaps
 - Get URIs from HTML
 
+## Install
+
+Open [`powershell`](https://docs.microsoft.com/en-us/powershell/scripting/windows-powershell/install/installing-windows-powershell?view=powershell-5.1) or [`pwsh`](https://github.com/powershell/powershell#-powershell) and type:
+
+```powershell
+Install-Module -Name PSSiteScraper -Repository PSGallery -Scope CurrentUser -Verbose
+```
+
+If prompted to trust the repository, hit `Y` and `enter`.
+
 ## Usage
 
 ```powershell
